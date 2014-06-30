@@ -1,10 +1,17 @@
-\section{Automatic optimization of algorithms}
-This section should describe how analyzing the DDG can be used for automatic optimization, or at least to give hints for possible optimization to the developer. 
+\section{Automatic optimization of programs}
+This section is going to describe how analyzing the Directed Dependency Graph (DDG) can be used for automatic optimization. For accomplishing this task we can utilize the following features of the DDG: 
+\begin{itemize}
+\item Caller/callee dependencies. 
+\item Dependencies of modifiables\footnote{Pointer-like variables which have to be explicitly read and written, and therefore support automatic change propagation}.
+\item Dependencies of bound variables which are not modifiables. 
+\end{itemize}
 
-The exact contents of this chapter are still to be determined, based on our findings. Possible approaches include, but may not be limited to: 
+Furthermore, using the intrinsic distance algorithm, we can recognize which nodes are deleted, inserted or retained \cite{Acar2005thesis}, which can be used to optimize the program to accomplish faster change propagation. 
+
+The exact contents described in this chapter are still to be determined, based on our findings. Possible approaches include, but may not be limited to: 
 
 \begin{itemize}
-\item Operation reordering.
-\item Insertion of memorization commands.
+\item Function call reordering. 
+\item Insertion of explicit memorization calls.
 \item Detection of cascading updates, which could be omitted. 
 \end{itemize}

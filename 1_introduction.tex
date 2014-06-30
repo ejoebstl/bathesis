@@ -1,6 +1,20 @@
 \section{Introduction}
-This section should describe the purpose of incremental computation and also explain for which purpose the concept of incremental computation is useful. Also, used and referenced terminology should be outlined.  
+This section is going to describe the purpose of incremental computation and also explain why the concept of incremental computation is useful for speeding up computations. Furthermore, used and referenced terminology should be outlined.  
 
 \subsection{Approaches to incremental computation}
-This subsection should briefly describe various approaches to incremental computation, and outline their strengths and weaknesses. Also, some newer implementations of incremental computation platforms should be outlined. \cite{heydon2000caching} \cite{acar2004dynamizing} \cite{acar2006adaptive} \cite{cohen1991dynamic} \cite{liu1995systematic} \cite{naiadIncremental} \cite{Chen2014} \cite{Pugh1989} 
-\cite{naiadIncremental} \cite{Hammer2009} \cite{ley2008compiling} \cite{Peng2010} \cite{Acar2008}
+This subsection briefly describes various approaches to incremental computation, and outline their strengths and weaknesses. 
+
+These approaches include: 
+\begin{itemize}
+\item Providing a platform or framework for incremental programming, utilizing
+\begin{itemize}
+\item function caching. \cite{heydon2000caching} \cite{Pugh1989} 
+\item formal manipulation of the program. \cite{cohen1991dynamic}
+\item differential data flow. \cite{naiadIncremental}
+\item a combination of multiple approaches, like memorization and execution traces.  \cite{Hammer2009} \cite{Chen2014} \cite{Acar2008} \cite{acar2006adaptive}   
+\end{itemize}
+\item Providing a high-level abstraction, like an incremental database. \cite{Peng2010}
+\item Deriving an incremental program from a non-incremental, non-functional program. \cite{liu1995systematic} 
+\item Deriving an incremental program from a non-incremental, functional program. \cite{ley2008compiling} 
+\end{itemize}
+
