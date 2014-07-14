@@ -26,41 +26,55 @@ Also, this section should emphasis that the intrinsic trace distance forms a low
 One of the base concepts described in the previous section is the concept of a trace. Atrace can be described as an ordered tree, whereas nodes represent function calls during the program execution. While we can retain the definition of a trace, we have to adjust the definition of nodes and node equality for our purpose. Also, we have to show that TBD programs fit the machine model described in\cite{Acar2005thesis}.
 
 \subsection{Trace node equality and similarity}
-
+\label{sec:node_equality}
 As described in section \ref{sec:tbd}, TBD provides´$read$, $mod$, $write$, $memo$ and $par$ methods to the developer. Instead of creating an execution trace out of all  functions in the program, we restrict ourselfs to a trace consisting of only these functions. It should be noted, that, since we require each function to be side-effect free and determinisitc, we could theoretically omit $write$ nodes in the DDG, since they directly depend on their corresponding parent nodes. However, including these nodes can provide useful insights during debugging. 
 
 \begin{definition}[Trace nodes]
 Let each node in our execution trace represent a $read$, $mod$, $write$ $memo$ or $par$ function. We annotate each node with a tuple of the following values:
 \begin{itemize}
 \item the node type $t$, which can have the values $read$, $mod$, $write$, $memo$ or $par$
-\item a node tag, a sequence of values which has a different structure depending on the node type 
+\item a node tag, a sequence of labels which has a different structure depending on the node type 
 \end{itemize}
+\end{definition}
+
 Depending on the node type, we define the following node tags: 
+
+\begin{definition}
+Let the tag for $read$ nodes consist of $\mathbf{(a, fun)}$, whereas
 \begin{itemize}
-\item for $read$ nodes:
-\begin{itemize}
-\item the value of the modifiable being read, denoted as $a$
-\item the reader function being called, denoted as $fun$
+\item $a$ is the value of the modifiable being read
+\item $fun$ is the reader function being called
 \end{itemize}
-\item for $mod$ nodes:
+\end{definition}
+
+\begin{definition}
+Let the tag for $mod$ nodes consist of $\mathbf{mod(fun)}$, whereas
 \begin{itemize}
-\item the initialzer function being called, denoted as $fun$
+\item $fun$ is the initialzer function being called
 \end{itemize}
-\item for $write$ nodes:
+\end{definition}
+
+\begin{definition}
+Let the tag for $write$ nodes consist of $\mathbf{write(a, d)}$, whereas
 \begin{itemize}
-\item the value being written, denoted as $a$
-\item the destination being written to, denoted as $d$
+\item $a$ is the value being written
+\item $d$ is the destination where $a$ is being written to 
 \end{itemize}
-\item for $memo$ nodes:
+\end{definition}
+
+\begin{definition}
+Let the tag for $memo$ nodes consist of $\mathbf{memo((a_1, ..., a_n), fun)}$, whereas
 \begin{itemize}
-\item the list of values to memo match against, denoted as $(a_1, ..., a_n)$
-\item the function being called, denoted as $fun$
+\item $(a_1, ..., a_n)$ is the list of values to memo match against
+\item $fun$ is the function being called
 \end{itemize}
-\item for $par$ nodes:
+\end{definition}
+
+\begin{definition}
+Let the tag for $par$ nodes consist of $\mathbf{par(fun_1, fun_2)}$, whereas
 \begin{itemize}
-\item the first function being called, denoted as $fun_1$
-\item the second function being called, denoted as $fun_2$
-\end{itemize}
+\item $fun_1$ is the first function being called
+\item $fun_2$ is the second function being called
 \end{itemize}
 \end{definition}
 
@@ -71,13 +85,18 @@ Given these definitions, we now re-define equality of nodes.
 \begin{definition}[Node equality]
 Let a node $A$ and $B$ be equal, iff the node type of $A$, $t_a$, equals the node type of $B$, $t_b$, and the tag of $A$ equals the tag of $B$. 
 \end{definition}
-Obviously, we only compare the the tag if the node type already matches. Therefore, we can simply compare each element in the tag of $A$ with it's counterpart in the tag of $B$. 
+We only compare the the tag if the node type already matches. Therefore, we can simply compare each element in the tag of $A$ with it's counterpart in the tag of $B$. 
 
-The tag can consist of objects, value types, modifiables or functions. For comparing functions inside the tag we define equality as follows:
+\begin{definition}[Node similarity]
+[It might be sufficient to use equality, but with the read value removed from read nodes tag - think about this.]
+\end{definition}
+
+The tag can consist of objects, value types, modifiables or functions. For functions defining equality is not solveable in general \cite{church1936note}. With the constraintsof TBD programs, however, we are able to create a sufficient equality defintion for functions. 
 \begin{definition}[Function execution equality for TBD traces]
+\label{def:fun_equality}
 A function execution $fun_a$ and a function execution $fun_b$ are equal, iff 
 \begin{enumerate}
-\item they refer to the same symbol in the source code of the program
+\item $fun_a$ and $fun_b$ refer to the same symbol in the source code. 
 \item all arguments are equal
 \item all free variables bound from an outer scope are equal. 
 \end{enumerate}
@@ -95,9 +114,9 @@ A modifiable $x$ is equal to a modifiable $y$ iff $x$ and $y$ refer to the same 
 An object $A$ with ordered properties $(a_1, ..., a_n)$ is equal to an object $B$ with ordered properties  $(b_1, ..., b_n)$ iff $A$ and $B$ have the same type, and $a_i$ equals $b_i$ $\forall i \in[1, n]$. Properties can be other objects, modifiables or primitives. 
 \end{definition}
 
-[Proof that equality/similarity definition is sufficient]
+[Proof that equality/similarity definition matches the equality/similarity definition of \cite{Acar2005thesis}]
 
-[Ask Umut wether trace vs. monotone trace, because if we have to keep ancestor relationship in mind, we HAVE to use LCS algo]
+[Ask wether trace vs. monotone trace, because if we have to keep ancestor relationship in mind, we HAVE to use LCS algo]
 
 With these definition of trace node equality, we can keep the definition of $Cognates$ and $Trace Distance$ from \cite{Acar2005thesis}.  
 
