@@ -200,8 +200,14 @@
 
 % Umkreiste Zahlen
 \usepackage{tikz}
-\newcommand*\circled[1]{\tikz[baseline=(char.base)]{
-  \node[shape=circle,draw,inner sep=2pt] (char) {#1};}}
+\usetikzlibrary{trees,arrows,positioning, calc} 
+
+% Node Styles
+\tikzstyle{root}=[draw,fill=gray,rectangle,minimum size=8pt,inner sep=0pt,label={0:$root$}]
+\tikzstyle{read}=[draw,fill=blue,circle,minimum size=8pt,inner sep=0pt,label={0:$read$}]
+\tikzstyle{memo}=[draw,fill=lightgreen,diamond,minimum size=8pt,inner sep=0pt,label={0:$memo$}]
+\tikzstyle{write}=[draw,fill=orange,circle,minimum size=8pt,inner sep=0pt,label={0:$write$}]
+\tikzstyle{par}=[draw,fill=yellow,diamond,minimum size=8pt,inner sep=0pt,label={0:$par$}]
 
 % Definition
 \usepackage{amsmath} 
@@ -212,9 +218,6 @@
     \newtheorem{theorem}{Theorem}
     \newtheorem{theorem-non}{Theorem}  
 
-% Euro-Zeichen
-\usepackage{eurosym}
-
 % Mathematische Symbole
 \usepackage{amssymb}
 
@@ -223,7 +226,7 @@
 
 \title{Automated analysis of algorithms implemented on top of TBD}
 
-\author{\IEEEauthorblockN{Walter Tichy, Umut Acar, Emanuel J\"{o}bstl}
+\author{\IEEEauthorblockN{Walter Tichy, Umut Acar, Thomas Marshall, Emanuel J\"{o}bstl}
 \IEEEauthorblockA{Karlsruhe Institute of Technology, Faculty of Computer Science\\
 Carnegie Mellon University, Computer Science Department\\
 }}
@@ -244,8 +247,9 @@ Carnegie Mellon University, Computer Science Department\\
 %
 
 \input{1_introduction.tex}
+\input{1_5_fundamentals.tex}
 \input{2_tbd.tex}
-\input{3_ddg_memo.tex}
+\input{3_tbd_theory.tex}
 \input{4_distance_algorithm.tex}
 \input{5_optimizing_algorithms.tex}
 \input{6_rw_examples.tex}

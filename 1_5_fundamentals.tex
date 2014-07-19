@@ -1,0 +1,58 @@
+\section{Fundamental work}
+\label{sec:ddg_memo}
+The work of U. Acar et al\cite{Acar2005thesis} describes the theoretical and practical concept of incremental computing using memorization and DDGs in detail. Since these concepts are important for understanding this writing, they are summarized in this section. First, general terms are explained briefly, then, a short theoretical outline for the term of stable algorithms is provided. 
+
+\subsection{Change Propagation, Dynamic Dependece Graphs and Memorization}
+\textit{Change Propagation} refers to the task of re-evaluating certain parts of a program as soon as the input data changes. The target of this re-evaluation is to update the output accordingly, as if the whole program would have been re-evaluated. A change propagation algorithm is responsible for selecting the function calls in the program, which have to be re-executed. When the program is executed for the first time, no change propagation happens. This execution is called the \textit{Initial Run} \cite{Acar2005thesis}.
+
+A \textit{Dynamic Dependence Graph (DDG)} can be described as a data structure, which holds a directed graph for tracking control and data dependencies during execution \cite{Acar2005thesis}, whereas the nodes of the graph are usually function calls in the program. In contrast to \textit{Static Dependence Graphs} \cite{Demers1981}, DDGs are mutated during change propagation and therefore adjusted to the new program structure. 
+
+\textit{Memorization} is the concept of storing intermediate results and re-using them during change propagation. Memorization can be combined with DDGs, by inserting memorization nodes into the graph. During change propagation, this can lead to a significant performance increase, because entire sub-trees of call graph and their corresponding results can be re-used \cite{Acar2005thesis}. 
+
+\subsection{Execution Traces}
+A trace is a theoretical construct which can be described as an ordered tree, whereas nodes represent function calls during the program execution \cite{Acar2005thesis}. While similar to the DDG, a trace tracks no data dependencies. A trace usually resembles the call tree of a program. 
+
+Each node $v$ is uniquely described by a tag, consisting of
+
+\begin{itemize}
+\item the function being called, $fun(v)$
+\item the arguements of the function call, $args(v)$
+\item the values read in the body of the function, $reads(v)$
+\item the values returned to the function from its callees, $returns(v)$
+\item the weight of the function, $w(v)$, which is equal to its execution time.
+\end{itemize}
+
+Two nodes $v$ and $v'$ are equal, denoted $v \equiv v'$, if $fun(v) = fun(v')$, $args(v) = args(v')$, $reads(v) = reads(v')$ and $returns(v) = returns(v')$.
+
+\subsection{Trace distance}
+Trace distance can basically be described as an edit distance between two execution traces \cite{Acar2005thesis} \cite{acar2004dynamizing}. 
+
+To find the minimum trace distance of two traces $T$ and $T'$, the so called \textit{cognates} relation can be used. 
+
+A set of cognates $C$ is a relation of two traces $T$ and $T'$ with the set of nodes $V$ and $V'$, so that
+
+\begin{itemize}
+\item $C \subset V \times V'$
+\item for each $(v, v') \in V: v \equiv v'$ 
+\item no node is paired with more than one node. 
+\end{itemize}
+
+All nodes of both traces $T$ and $T'$ can be colored either blue, yellow or red. 
+Nodes which have a cognate are colored blue. Nodes of $T$ without a cognate are colored yellow. Nodes of $T'$ without a cognate are colored red. 
+
+The trace distance $\delta(T, T')$ between two traces $T$ and $T'$ can now be calculated by summing up the weights of all yellow and red nodes. This can be formally written as: 
+
+\begin{align*}
+	\delta(T, T') = \sum_{y \in Y} w(y) + \sum_{r \in R} w(r)
+\end{align*}
+
+In this equation, $Y$ denotes the set of all yellow vertices and $R$ is the set of all red vertices. 
+
+If the cognate relation $C$ is maximal, the intrinsic distance is minimal, denoted as $\delta^{min}$. Also, a maximal cognate relation can be found using a naive greedy algorithm \cite{Acar2005thesis} \cite{acar2004dynamizing}.
+
+\subsection{Stable algorithms}
+
+
+This subsection describes the concepts of stable algorithms, intrinsic trace distance and their relationship. 
+
+Also, this section should emphasis that the intrinsic trace distance forms a lower bound for the time needed by change propagation during an update. \cite{Acar2005thesis} 

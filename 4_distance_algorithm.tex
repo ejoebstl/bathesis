@@ -1,22 +1,22 @@
 \section{An intrinsic trace distance algorithm for TBD}
-While \cite{Acar2005thesis} already outlines a greedy algorithm for calculating the intrinsic trace distance, there are details in our implementation which are worth outlining. 
+While \cite{Acar2005thesis} already outlines a greedy algorithm for calculating the intrinsic trace distance, there are details we have to take care of for an implementation.
 
 \subsection{Implementing node equality}
 While equality of nodes is defined in section \ref{sec:node_equality}, it still remains open how a equality is implemented. For value types or objects we can use the $equals$ method provided by the Scala platform or define our own overload of $equals$, if needed.  
 
-For comparing anonymous functions passed to $read$, $memo$, $mod$, and $par$, we have to compare the function ASTs, all parameters, and all arguments, and all free variables bound from an outer scope, as described in definition \ref{def:fun_equality}. To accomplish this task, we can utilize the Scala macro API \cite{burmako2013scala}. Basically, the Scala macro API enables us to define macros written in Scala, which are executed during compile time. From within these macros, we can access and modify the AST of our program. 
+For comparing anonymous functions passed to $read$, $memo$, $mod$, and $par$, we have to compare the abstract syntax trees (ASTs) of functions, all parameters, and all arguments, and all free variables bound from an outer scope, as described in definition \ref{def:fun_equality}. To accomplish this task, we can utilize the Scala macro API \cite{burmako2013scala}. Basically, the Scala macro API enables us to define macros written in Scala, which are executed during compile time. From within these macros, we can access and modify the AST of our program. 
 
-To gather the necassary information for comparing anonymous functions during runtime, we replace the implementations of $read$, $memo$, $mod$ and $par$ with macros, which extract interesting information and creates a tag from it. Then, the macro generates code which calls the original function and passes the given parameters and the tag. 
+To gather the necassary information for comparing anonymous functions during runtime, we replace the implementations of $read$, $memo$, $mod$ and $par$ with macros, which extract interesting information and create a tag from it. Then, the macros generate code which calls the original function and passes the original parameters and the tag. 
 
 [Include sample of implementation]
 
-The symbol of the anonymous function is well known to the Scala macro, hence easy to extract. The arguments of the function are also well known for all functions provided by TBD, so they can be easily added to the tag. 
+The symbol of the anonymous function is well known to the Scala macro, hence easy to extract. The arguments of the function are also well known for all methods provided by TBD, so they can be easily added to the tag. 
 
-Finding free variables which are bound from an outer scope is not straight-forward, because at the macro expansion step, the scala compiler has no knowledge about whether a symbolis a function or a variable, or from where it is bound. To extract only the correct symbols, we first create a list of symbols which occour in the anonymous function $F$and store them in a set $V = (v_1, ..., v_n)$. Then, for each $v_i$, $i \in[1..n]$, we iterate over all ancestors of $v_i$ in the AST of $F$. If we find a variable definition or parameter which defines a symbol with the same name as $v_i$, we know that $v_i$ is not bound from an outer scope, so we remove it from our list $V$.
+Finding free variables which are bound from an outer scope is not straight-forward, because at the macro expansion step, the scala compiler has no knowledge about whether a symbol is a function or a variable, or from where it is bound. To extract only the correct symbols, we first create a list of all symbols which occour in the anonymous function $F$and store them in a set $V = (v_1, ..., v_n)$. Then, for each $v_i$, $i \in[1..n]$, we iterate over all ancestors of $v_i$ in the AST of $F$. If we find a variable definition or parameter which defines a symbol with the same name as $v_i$, we know that $v_i$ is not bound from an outer scope, so we remove it from our list $V$.
 
-Then, we iterate over all ancestors in the AST of the outmost enclosing scope of $F$. This scope is the class in which $F$ is defined in most cases. If we find an ancestor which defines a variable or parameter, we add the symbol of that variable to a set $D = (d_1, ..., d_m)$. Finally, we compute the set $U = (u_1, ..., u_k) = V \cap D$, whereas equality of elements in $V$ and $D$ is defined by equality of the symbol name. The set $U$ now contains only symbols, which are used in $F$, defined somewhere ourside $F$ and are variables. 
+Then, we iterate over all ancestors in the AST of the outmost enclosing scope of $F$. This scope is the class in which $F$ is defined in most cases. If we find an ancestor which defines a variable or parameter, we add the symbol of that variable to a set $D = (d_1, ..., d_m)$. Finally, we compute the set $U = (u_1, ..., u_k) = V \cap D$, whereas equality of elements in $V$ and $D$ is defined by equality of the symbol name. The set $U$ now contains only symbols, which are used in $F$, defined somewhere outside $F$ and are variables. 
 
-We now simply generate code to add the name and value of each symbol $u_i$ to a Scala list, whereas the list is then added to the tag. 
+Now, we generate code to add the name and value of each symbol $u_i$ to a Scala list, whereas the list is then added to the tag. The tag is passed to the original function, which adds it to the corresponding node in the DDG.  
 
 By applying the described technique, we are now able to create a tag, which can be used to compare nodes which depend on anonymous functions for equality. 
 
@@ -25,6 +25,6 @@ Given all nodes in two traces $T_1$ and $T_2$, including their tag, the trace di
 
 For a naive greedy algorithme, we create a tree- or hashset $S_1$, which holds all nodes from $T_1$. Then, we test for each node in $T_2$, if a node with an equal tag existed in $S_1$. If so, we remove the node from $S_1$.
 
-When all nodes have been tested, the intrinsic trace distance is given by the size of the set $|S_1|$ added to the count of nodes from $T_2$ which were not contained in $S_1$. 
+When all nodes have been tested, the intrinsic trace distance is given by the size of the set $|S_1|$ plus the count of nodes from $T_2$ which were not contained in $S_1$. 
 \subsection{Proof of correctness}
 [We shall also proof the correctness of our algorithm. It is of importance that we take the changes of the program model outlined in the previous section into account.]
