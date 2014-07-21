@@ -1,14 +1,14 @@
 \section{TBD}
 \label{sec:tbd}
-The TBD platform is a framework for incremental computation currently being developed at Carnegie Mellon University (CMU). TBD follows the approach of memorization combined with directed dependency graphs (DDGs), as throughly described in \cite{Acar2005thesis}. Also, parallel computing is supported. The framework allows a programmer to write software using TBDs programming interface, while TBD automatically takes care about invoking the correct functions for change propagation, in case of an update of the input data. \cite{?}
+The TBD platform is a framework for incremental computation currently being developed at Carnegie Mellon University (CMU). TBD follows the approach of memorization combined with directed dependency graphs (DDGs), as throughly described in \cite{Acar2005thesis}. Also, parallel computing is supported. The framework allows a programmer to write software using TBDs programming interface, while TBD automatically takes care about invoking the correct functions for change propagation, in case of an update of the input data.
 The framework is being developed in the Scala language, which enables us to exploit the reflection capabilities of Scala for analysis \cite{burmako2013scala} \cite{stocker2010scala}. 
 The source code of TBD is available at \hyperref[]{https://github.com/twmarshall/tbd}. 
 
-\subsection{Programming interface}
+\subsection{Programming interface} 
 TBD needs to keep track of reads and writes of variables in the program. To accomplish this, TBD wraps all values relevant for change propagation into so called \textit{modifiables} or short \textit{Mods}. TBD automatically wraps all input data into Mods. 
 
 \subsubsection{mod}
-To create Mods, for example as result of the program execution, TBD provides a method $mod$. The declaration of $mod$ can be seen in listing \ref{code:mod}. The $mod$ method calls a function parameter $initializer$ with a \textit{destination} or \textit{Dest} as argument. The value written to the Dest by the function parameter is then stored in the Mod, which is returned by the $mod$ method. Requireing the return type of \textit{Changeable} simply enforces that a write is the last operation inside $initializer$. 
+To create Mods, for example as result of the program execution, TBD provides a method $mod$. The declaration of $mod$ can be seen in listing \ref{code:mod}. The $mod$ method calls a function parameter $initializer$ with a \textit{destination} or \textit{Dest} as argument. The value written to the Dest by the function parameter is then stored in the Mod, which is returned by the $mod$ method. Requiring the return type of \textit{Changeable} simply enforces that a write is the last operation inside $initializer$. 
 
 \begin{figure}
 \begin{lstlisting}[frame=single,basicstyle=\ttfamily]
@@ -35,7 +35,7 @@ def write[T](
 \end{figure}
 
 \subsubsection{read}
-The values from within modifiables have to be read explicitely. For this purpose, TBD provides a $read$ method, which accepts a Mod as parameter and then calls a function parameter $reader$ with the value of the Mod as first argument. The signature can be seen in in listing \ref{code:read}. For $read$, the function parameter $reader$ also has to return a Changeable. Reads without an enclosed write are not useful, since the $read$ method my not modify values outside of it's scope.  
+The values from within modifiables have to be read explicitly. For this purpose, TBD provides a $read$ method, which accepts a Mod as parameter and then calls a function parameter $reader$ with the value of the Mod as first argument. The signature can be seen in in listing \ref{code:read}. For $read$, the function parameter $reader$ also has to return a Changeable. Reads without an enclosed write are not useful, since the $read$ method my not modify values outside of it's scope.  
 
 \begin{figure}
 \begin{lstlisting}[frame=single,basicstyle=\ttfamily]
@@ -48,7 +48,7 @@ def read[T, U <: Changeable[_]](
 \label{code:read}
 \end{figure}
 
-Listing \ref{code:simpleExample} shows a very simple example, which adds two Mods of type integer. First, $mod$ is called to create a Dest for the result, then the values of $mod1$ and $mod2$ are read. The values of $mod1$ and $mod2$ are then added and written to $dest$. The nesting of functions as seen in the example is typical for TBD. 
+Listing \ref{code:simpleExample} shows a very simple example, which adds two Mods of type integer. First, $mod$ is called to create a Dest for the result, then the values of $mod1$ and $mod2$ are read. The values of $mod1$ and $mod2$ are then added and written to $dest$. The nesting of functions as seen in the example is typical for applications on top of TBD. 
 
 \begin{figure}
 \begin{lstlisting}[frame=single,basicstyle=\ttfamily]
@@ -70,10 +70,10 @@ def add(
 \label{code:simpleExample}
 \end{figure}
 
-Since all programs consist of $read$, $write$ and $mod$ functions, and all Modifiables have to be explicitely written, TBD is able to construct a DDG from monitoring the calls to the corresponding functions.
+Since all programs consist of $read$, $write$ and $mod$ functions, and all Modifiables have to be explicitly written, TBD is able to construct a DDG from monitoring the calls to the corresponding functions.
 
 \subsubsection{memo}
-As we already mentioned, TBD not only utilizes DDGs, but also memorization. To accomplish memorization, tbd provides a method to create so-called \textit{Lifts}, which in turn provide a method for memorization, $memo$. The $memo$ method accepts a list of parameters, which are used to match this $memo$ call and a function parameter $func$. A Lift can be described as memorization context. Calling $memo$ with the same parameters as any previous call on the same Lift will yield the same result, without evaluation $func$. If there is no match, $func$ will be called and the result will be stored for future memorization. In general, it is important to not share Lift objects between unrelated function calls, but to preserve the same Lift for all calls to the same function. The signature of $memo$ can be seen in listing \ref{code:memo}.
+As we already mentioned, TBD not only utilizes DDGs, but also memorization. To accomplish memorization, TBD provides a method to create so-called \textit{Lifts}, which in turn provide a method for memorization, $memo$. The $memo$ method accepts a list of parameters, which are used to match this $memo$ call and a function parameter $func$. A Lift can be described as memorization context. Calling $memo$ with the same parameters as any previous call on the same Lift will yield the same result, without evaluation $func$. If there is no match, $func$ will be called and the result will be stored for future memorization. In general, it is important to not share Lift objects between unrelated function calls, but to preserve the same Lift for all calls to the same function. The signature of $memo$ can be seen in listing \ref{code:memo}.
 
 \begin{figure}
 \begin{lstlisting}[frame=single,basicstyle=\ttfamily]
@@ -86,9 +86,9 @@ def memo(
 \label{code:memo}
 \end{figure}
 
-A typical use case for memorization is list processing. A typical example is shown in \ref{code:memoExample}. First, we define a class for list nodes and the properties $value$ of type integer and $next$. Note that the class is immuteable. Next, we define a function, $incrementalList$, which initializes a lift and calls a recursive function, $incrementRecursive$ with the head of the list and the created lift. The latter function maps each list node to a list node with $value$ increased by one. This is done by first creating a Dest $dest$ for the new ListNode. Then, the current node is read from it's modifiable. If the current node is null, the end of the list is reached and $null$ can be written to $dest$. If the current node is not $null$, the value is read, increased, and written again to create the Mod $newValue$, similar to the example in listing \ref{code:simpleExample}. 
+A typical use case for memorization is list processing. A typical example is shown in \ref{code:memoExample}. First, we define a class for list nodes and the properties $value$ of type integer and $next$. Note that the class is immutable. Next, we define a function, $incrementalList$, which initializes a lift and calls a recursive function, $incrementRecursive$ with the head of the list and the created lift. The latter function maps each list node to a list node with $value$ increased by one. This is done by first creating a Dest $dest$ for the new List Node. Then, the current node is read from it's modifiable. If the current node is null, the end of the list is reached and $null$ can be written to $dest$. If the current node is not $null$, the value is read, increased, and written again to create the Mod $newValue$, similar to the example in listing \ref{code:simpleExample}. 
 
-Then, $incrementRecursive$ is called recursiveley with the next node as parameter. The call to $incrementRecursive$, however, is enclosed in a memo operation, with the next node as parameter. If a change propagation happens now, TBD is not going to recursiveley call all reads again, but will stop as soon as a memo match occours. This is typically the case as soon as the recursion reaches an unchanged list element. 
+Then, $incrementRecursive$ is called recursively with the next node as parameter. The call to $incrementRecursive$, however, is enclosed in a memo operation, with the next node as parameter. If a change propagation happens now, TBD is not going to recursively call all reads again, but will stop as soon as a memo match occurs. This is typically the case as soon as the recursion reaches an unchanged list element. 
 
 In the end, a new list node is constructed from the results and returned. 
 \begin{figure*}
@@ -133,7 +133,7 @@ def incrementRecursive(tbd: TBD, current: Mod[ListNode], lift: Lift[ListNode])
 \end{figure*}
 
 \subsubsection{par}
-The last crucial method offered by TBD is a method to execute code in parallel, $par$. The $par$ method takes two function parameters $one$ and $two$, where each function parameter is executed on a septerate worker thread with septerate TBD objects. The $par$ method blocks util both workers are finished. The signature of $par$ is shown in listing \ref{code:par}
+The last crucial method offered by TBD is a method to execute code in parallel, $par$. The $par$ method takes two function parameters $one$ and $two$, where each function parameter is executed on a separate worker thread with separate TBD objects. The $par$ method blocks until both workers are finished. The signature of $par$ is shown in listing \ref{code:par}
 
 \begin{figure}
 \begin{lstlisting}[frame=single,basicstyle=\ttfamily]
@@ -148,10 +148,11 @@ def par[T, U](
 
 \subsection{Constraints and responsibilities}
 
-During change propagation, TBD re-evaluates all $read$ calls that read modifiables which have changed, in the same order they were called during the initial run. Obviously, the functions invoked $read$, $mod$, $memo$ and $par$ may not write variables outside of their scope, or they will easily break change propagation. They have to be side effect free. If, for example, a static variable is written from within a function called by read, and then used somewhere else in the program, the system has no way to propagate a change of this variable.
+During change propagation, TBD re-evaluates all $read$ calls that read modifiables which have changed, in the same order they were called during the initial run. Obviously, the functions invoked $read$, $mod$, $memo$ and $par$ may not write variables outside of their scope, or they will easily break change propagation. They have to be side effect free. 
 
-Furthermore, all functions called have to be deterministic. Calling the same function with the same parameters has to lead to the same return value or the same value written to a dest. Otherwise, memorization will not be useable in the program.
+If, for example, a static variable is written from within a function called by read, and then used somewhere else in the program, the system has no way to propagate a change of this variable.
 
-For each function parameter passed to the functions $read$ or $mod$, the last operation executed in that function parameter has to be a $write$. This is enforced by requireing the return type of $Changeable$ for function parameters.  
+Furthermore, all functions called have to be deterministic. Calling the same function with the same parameters has to lead to the same return value or the same value written to a dest. Otherwise, memorization will not be usable in the program.
 
-[TODO: describe the order of function calls. ]
+For each function parameter passed to the functions $read$ or $mod$, the last operation executed in that function parameter has to be a $write$. This is enforced by requiring the return type of $Changeable$ for function parameters.
+Due to this, it is generally not possible to use return statements to return values within a TBD program.  

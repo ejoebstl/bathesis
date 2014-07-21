@@ -200,14 +200,15 @@
 
 % Umkreiste Zahlen
 \usepackage{tikz}
-\usetikzlibrary{trees,arrows,positioning, calc} 
+\usetikzlibrary{trees,arrows,positioning, calc, shapes.geometric} 
 
 % Node Styles
-\tikzstyle{root}=[draw,fill=gray,rectangle,minimum size=8pt,inner sep=0pt,label={0:$root$}]
-\tikzstyle{read}=[draw,fill=blue,circle,minimum size=8pt,inner sep=0pt,label={0:$read$}]
-\tikzstyle{memo}=[draw,fill=lightgreen,diamond,minimum size=8pt,inner sep=0pt,label={0:$memo$}]
-\tikzstyle{write}=[draw,fill=orange,circle,minimum size=8pt,inner sep=0pt,label={0:$write$}]
-\tikzstyle{par}=[draw,fill=yellow,diamond,minimum size=8pt,inner sep=0pt,label={0:$par$}]
+\tikzstyle{root}=[draw,fill=gray,rectangle,minimum size=8pt,inner sep=0pt,label={0:root}]
+\tikzstyle{read}=[draw,fill=blue,circle,minimum size=8pt,inner sep=0pt,label={0:read}]
+\tikzstyle{mod}=[draw,fill=magenta,circle,minimum size=8pt,inner sep=0pt,label={0:mod}]
+\tikzstyle{memo}=[draw,fill=green!50,shape=diamond,minimum size=8pt,inner sep=0pt,label={0:memo}]
+\tikzstyle{write}=[draw,fill=orange,circle,minimum size=8pt,inner sep=0pt,label={0:write}]
+\tikzstyle{par}=[draw,fill=yellow,shape=diamond,minimum size=8pt,inner sep=0pt,label={0:par}]
 
 % Definition
 \usepackage{amsmath} 
@@ -224,7 +225,7 @@
 
 \begin{document}
 
-\title{Automated analysis of algorithms implemented on top of TBD}
+\title{Automated analysis of algorithms implemented on top of TBD based on trace distance}
 
 \author{\IEEEauthorblockN{Walter Tichy, Umut Acar, Thomas Marshall, Emanuel J\"{o}bstl}
 \IEEEauthorblockA{Karlsruhe Institute of Technology, Faculty of Computer Science\\
