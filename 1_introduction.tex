@@ -18,3 +18,14 @@ These approaches include:
 \item Deriving an incremental program from a non-incremental, functional program. \cite{ley2008compiling} 
 \end{itemize}
 
+\subsection{Motivation}
+
+For algorithms, asymptotic complexity of a single execution is usually an important property. Regarding incremental programs however, the asymptotic complexity of propagating input changes through the program is also of interest. While inferring asymptotic complexity is a task which is usually done by hand for a given algorithm, this approach can be hard for incremental programs, due to the complexity of underlying models and change propagation algorithms. 
+
+From a practical viewpoint however, asymptotic complexity is not always the only important property of a program. For real-world purposes, a benchmark or an analysis of a certain program execution can be sufficient to yield a meaningful statement about program performance. 
+
+Given two execution traces of the same incremental program with different input data, we present a practical approach to calculate a lower bound for change propagation time between these two traces. We can also show that our approach works independently from the change propagation algorithm utilized by the program. While it is not safely possible to infer asymptotic complexity from the obtained data, we can make statements regarding the expected change propagation time for given update sizes. Especially, we can decide whether the change propagation is reasonably faster than a complete re-execution of the program. 
+
+Naturally, the performance of change propagation is not the only interesting property. If the performance is not as good as expected, the question about how to increase performance arises. Since execution traces provide us with detailed sets of control and data dependencies, we can determine and inspect relationships between subsets of the program execution. By utilizing these dependencies, we are able to automatically spot issues in the program, especially regarding the correct use of memorization. Due to the mere count of dependencies which arise even in small programs, this task is cumbersome to be done by hand, while it can be easily automated. 
+
+Exploiting these approaches, we create a tool, which assists developers when writing incremental programs: The tool provides metrics about the performance of an incremental program and also suggests changes of the program structure to increase performance where applicable. 

@@ -147,7 +147,7 @@ def par[T, U](
 \end{figure}
 
 \subsection{Constraints and responsibilities}
-
+\label{sec:constraints}
 During change propagation, TBD re-evaluates all $read$ calls that read modifiables which have changed, in the same order they were called during the initial run. Obviously, the functions invoked $read$, $mod$, $memo$ and $par$ may not write variables outside of their scope, or they will easily break change propagation. They have to be side effect free. 
 
 If, for example, a static variable is written from within a function called by read, and then used somewhere else in the program, the system has no way to propagate a change of this variable.
