@@ -1,15 +1,15 @@
 \section{Fundamental work}
-\label{sec:ddg_memo}
 The work of U. Acar et al\cite{Acar2005thesis} describes the theoretical and practical concept of incremental computing using memorization and DDGs in detail. Since these concepts are important for understanding this writing, they are summarized in this section. First, general terms are explained briefly, then, a short theoretical outline for the term of stable algorithms is provided. 
 
 \subsection{Change Propagation, Dynamic Dependence Graphs and Memorization}
-\textit{Change Propagation} refers to the task of re-evaluating certain parts of a program as soon as the input data changes. The target of this re-evaluation is to update the output accordingly, as if the whole program would have been re-evaluated. A change propagation algorithm is responsible for selecting the function calls in the program, which have to be re-executed. When the program is executed for the first time, no change propagation happens. This execution is called the \textit{Initial Run} \cite{Acar2005thesis}.
 
 A \textit{Dynamic Dependence Graph (DDG)} can be described as a data structure, which holds a directed graph for tracking control and data dependencies during execution \cite{Acar2005thesis}, whereas the nodes of the graph are usually function calls in the program. In contrast to \textit{Static Dependence Graphs} \cite{Demers1981}, DDGs are mutated during change propagation and therefore adjusted to the new program structure. 
 
 \textit{Memorization} is the concept of storing intermediate results and re-using them during change propagation. Memorization can be combined with DDGs, by inserting memorization nodes into the graph. During change propagation, this can lead to a significant performance increase, because entire sub-trees of the call graph and their corresponding results can be re-used \cite{Acar2005thesis}. 
 
 \subsection{Execution Traces}
+
+\label{sec:ddg_memo}
 A trace is a theoretical construct which can be described as an ordered tree, whereas nodes represent function calls during the program execution \cite{Acar2005thesis}. While similar to the DDG, a trace tracks no data dependencies. A trace usually resembles the call tree of a program. 
 
 \begin{definition}[General trace node equality]
