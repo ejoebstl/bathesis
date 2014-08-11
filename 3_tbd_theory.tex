@@ -1,8 +1,61 @@
-\section{A theoretical model for TBD}
+\section{Theoretic fundamentals}
+While a very comprehensive theoretical model for incremental programs based on DDGs and memoriation can be found in \cite{Acar2005thesis}, we have to adjust parts of the model to fit the TBD platform. The concept of a \textit{trace} is necassary as a fundamental approach for gathering information about an incremental program. The approach of \textit{trace distance} is important for the analysis of programs, since it can be used as a metric for the prerformance of the change propagation of a given incremental algorithm. 
+
+\subsection{Execution Traces}
+
+\label{sec:ddg_memo}
+A trace is a theoretical construct which can be described as an ordered tree, whereas nodes represent function calls during the program execution \cite{Acar2005thesis}. While similar to the DDG, a trace tracks no data dependencies. A trace usually resembles the call tree of a program. 
+
+\begin{definition}[General trace node equality]
+Each node $v$ is uniquely described by a tag, consisting of
+
+\begin{itemize}
+\item the function being called, $fun(v)$
+\item the arguments of the function call, $args(v)$
+\item the values read in the body of the function, $reads(v)$
+\item the values returned to the function from its callees, $returns(v)$
+\item the weight of the function, $w(v)$, which is equal to its execution time.
+\end{itemize}
+
+Two nodes $v$ and $v'$ are equal, denoted $v \equiv v'$, if $fun(v) = fun(v')$, $args(v) = args(v')$, $reads(v) = reads(v')$ and $returns(v) = returns(v')$.
+\end{definition}
+
+\subsection{Trace distance}
+Trace distance can basically be described as an edit distance between two execution traces \cite{Acar2005thesis} \cite{acar2004dynamizing}. 
+
+To find the minimum trace distance of two traces $T$ and $T'$, the so called \textit{cognates} relation can be used. 
+
+\begin{definition}[Cognates]
+A set of cognates $C$ is a relation of two traces $T$ and $T'$ with the set of nodes $V$ and $V'$, so that
+
+\begin{itemize}
+\item $C \subset V \times V'$
+\item for each $(v, v') \in V: v \equiv v'$ 
+\item no node is paired with more than one node
+\end{itemize}
+\end{definition}
+All nodes of both traces $T$ and $T'$ can be colored either blue, yellow or red. 
+Nodes which have a cognate are colored blue. Nodes of $T$ without a cognate are colored yellow. Nodes of $T'$ without a cognate are colored red. 
+
+The trace distance can now be calculated by summing up the weights of all yellow and red nodes. 
+
+\begin{definition}[Trace distance]
+The trace distance $\delta(T, T')$ between two traces $T$ and $T'$ is given by
+\begin{align*}
+  \delta(T, T') = \sum_{y \in Y} w(y) + \sum_{r \in R} w(r)
+\end{align*}
+whereas $Y$ denotes the set of all yellow vertices and $R$ is the set of all red vertices. 
+\end{definition}
+
+If the cognate relation $C$ is maximal, the intrinsic distance is minimal, denoted as $\delta^{min}$. Also, a maximal cognate relation can be found using a naive greedy algorithm \cite{Acar2005thesis} \cite{acar2004dynamizing}.
+
+The minimal trace distance forms a lower bound for the duration of change propagation, since during change propagation all red vertices have to be deleted, and all yellow vertices have to be re-evaluated \cite{Acar2005thesis}.
+
+\subsection{Traces in TBD}
+
 While we can retain the definition of a trace, we have to adjust the definition of nodes and node equality for our purpose, so we can use it in the next section to construct an algorithm for trace distance calculation usable on the TBD platform. 
 
-\subsection{Trace node equality and similarity}
-\label{sec:node_equality}
+\subsubsection{TBD trace nodes}
 As described in section \ref{sec:tbd}, TBD provides $read$, $mod$, $write$, $memo$ and $par$ methods to the developer. Instead of creating an execution trace out of all  functions in the program, we restrict ourselves to a trace consisting of only these functions. It should be noted, that, since we require each function to be side-effect free and deterministic, we could theoretically omit $write$ nodes in the DDG, since they directly depend on their corresponding parent nodes. However, including these nodes can provide useful insights during debugging. 
 
 \begin{definition}[TBD Trace nodes]
@@ -55,6 +108,8 @@ Let the tag for $par$ nodes consist of $\mathbf{(fun_1, fun_2)}$, whereas
 \end{itemize}
 \end{definition}
 
+\subsubsection{TBD trace node equality}
+\label{sec:node_equality}
 Given these definitions, we now re-define equality of nodes. 
 
 \begin{definition}[Node equality]

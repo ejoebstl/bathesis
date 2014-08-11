@@ -1,4 +1,4 @@
-\section{An intrinsic trace distance algorithm for TBD}
+\section{Implementing an intrinsic trace distance algorithm for TBD}
 While \cite{Acar2005thesis} already outlines a greedy algorithm for calculating the intrinsic trace distance, there are details we have to take care of for accomplishing an implementation.
 
 \subsection{Implementing node equality}
@@ -31,22 +31,24 @@ Whe have to show that our distance algorithm forms a lower bound for the count o
 
 \begin{lemma}
 \label{lem:equalExec}
-Two equal nodes and execute equally and make equal subcalls
+Two equal trace nodes execute equally and make equal subcalls
 \end{lemma}
 
-[Todo: Make this more formal]
-Proof: We can safely assume this, because if the nodes are equal, they refer to same TBD mod, $read$, $write$, $mod$, $memo$ or $par$. These functions are guaranteed to execute the same way if the input parameters are equal. Also, the tag of the node contains all parameters on which the function depends, including free variables. Nodes are only equal if the tag equals. Accessing static or class variables from inside function parameters can be ruled out due to the constraints listed in section \ref{sec:constraints}. $\blacksquare$
+Proof: If the nodes are equal, they refer to same TBD function, $read$, $write$, $mod$, $memo$ or $par$. These functions are guaranteed to execute the same way if the input parameters are equal. Also, the tag of the node contains all parameters the function depends on, including free variables and higher order functions. Nodes are only equal if the tag equals. Accessing static or class variables from inside function parameters can be ruled out due to the constraints listed in section \ref{sec:constraints}. $\blacksquare$
 
 Note that this can not be easily proven in a pure formal way, since this would require a theoretical model for the whole Scala language. 
 
-[Todo: Define which operations a optimal algorithm is allowed to make. (Re-Ordering, (Re-)Execution, Deletion)]
+\begin{definition}[Change propagation algorithm]
+Let $A$ be a change propagation algorithm. This means that $A$ propagates input changes through the program and updates the program state and the output accordingly. A change propagation algorithm may only re-order, re-execute or delete nodes from an existing trace. 
+Let $\alpha_A(I, I')$ be the count of re-evaluated nodes for a change propagation with algorithm $A$ from an input $I$ to another input $I'$ for the same program. 
+\end{definition}
+
 \begin{definition}[Optimal change propagation algorithm]
-Let $A$ be an optimal change propagation algorithm. That means that $A$ re-evaluates as few nodes as possible during change propagation. 
-Let $\alpha(I, I')$ be the count of re-evaluated nodes for a change propagation from an input $I$ to another input $I'$ for the same program. 
+Let $A*$ be an optimal change propagation algorithm. That means that $A*$ re-evaluates as few nodes as possible during change propagation. 
 \end{definition}
 
 Let $I$ and $I'$ be two inputs for a program. Let $T$ and $T'$ be the traces of the program execution with $I$ and $I'$ as input. 
-To show that our trace distance algorithm finds a lower bound for change propagation, we have to show that $\delta(T, T') = \alpha(I, I')$. 
+To show that our trace distance algorithm finds a lower bound for change propagation, we have to show that $\delta(T, T') = \alpha_A*(I, I')$. 
 
 \begin{lemma}
 \label{lem:alphaLeq}
@@ -59,7 +61,7 @@ That means, that for all nodes in $Y$ ther is no corresponding node with an equa
 \label{lem:alphaGeq}
 $\delta(T, T') \geq \alpha(I, I')$
 \end{lemma} 
-Proof: Let $B$ be the set off al nodes in $T$ and $T'$ which have a cognate and are therefore equal. Lets assume that ther is a vertex $v$ in $B$ which is re-executed during change propagation by the optimal algorithm $A$. Due to lemma \ref{lem:equalExec} we know that this re-execution was unnecassary. Thereforew, our assumtion was wrong. We know now that an optimal algorithm does not re-evaluate vertixes which have a cognate, or in other words, it may only re-evaluate vertices which have no cognate. A the count of all vertices without a cognate equals the trace distance, we know that the count of re-evaluated nodes is lower or equal than the trace distance. $\blacksquare$
+Proof: Let $B$ be the set of all nodes in $T$ and $T'$ which have a cognate and are therefore equal. Lets assume that ther is a vertex $v$ in $B$ which is re-executed during change propagation by the optimal algorithm $A$. Due to lemma \ref{lem:equalExec} we know that this re-execution was unnecassary. Thereforew, our assumtion was wrong. We know now that an optimal algorithm does not re-evaluate vertixes which have a cognate, or in other words, it may only re-evaluate vertices which have no cognate. A the count of all vertices without a cognate equals the trace distance, we know that the count of re-evaluated nodes is lower or equal than the trace distance. $\blacksquare$
 
 \begin{theorem}
 $\delta(T, T') = \alpha(I, I')$
