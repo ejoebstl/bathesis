@@ -1,7 +1,7 @@
 \section{Implementing an intrinsic trace distance algorithm for TBD}
 While \cite{Acar2005thesis} already outlines a greedy algorithm for calculating the intrinsic trace distance, there are details we have to take care of for accomplishing an implementation.
 
-\subsection{Implementing node equality}
+\subsection{Node equality}
 While equality of nodes is defined in section \ref{sec:node_equality}, it still remains open how a equality is implemented. For value types or objects we can use the $equals$ method provided by the Scala platform or define our own overload of $equals$, if needed.  
 
 For testing anonymous functions passed to $read$, $memo$, $mod$, and $par$ for equality, we have to compare the the function itself, all parameters, all arguments, and all free variables bound from an outer scope, as described in definition \ref{def:fun_equality}. To accomplish this task, we can utilize the Scala macro API \cite{burmako2013scala}. Basically, the Scala macro API enables us to define small programs written in Scala, which are executed during compile time. From within these macros, we can access all information the compiler has and modify the abstract syntax tree (AST) of our program on the fly. 
@@ -20,18 +20,18 @@ Now, we generate code to add the name and value of each symbol $u_i$ to a Scala 
 
 By applying the described technique, we are now able to create a tag, which can be used to compare nodes which depend on anonymous functions for equality. 
 
-\subsection{Implementing the intrinsic distance algorithm}
+\subsection{The intrinsic distance algorithm}
 Given all nodes in two traces $T_1$ and $T_2$, including their tag, the trace distance can be computed like described in \cite{Acar2005thesis}.  
 
 For a naive greedy algorithm, we create a tree- or hash set $S_1$, which holds all nodes from $T_1$. Then, we test for each node in $T_2$, if a node with an equal tag existed in $S_1$. If so, we remove the node from $S_1$.
 
 When all nodes have been tested, the intrinsic trace distance is given by the size of the set $|S_1|$ plus the count of nodes from $T_2$ which were not contained in $S_1$. 
 \subsection{Proof of correctness}
-Whe have to show that our distance algorithm forms a lower bound for the count of nodes re-evaluated during change propagation. 
+We have to show that our distance algorithm forms a lower bound for the count of nodes re-evaluated during change propagation. 
 
 \begin{lemma}
 \label{lem:equalExec}
-Two equal trace nodes execute equally and make equal subcalls
+Two equal trace nodes execute equally and make equal sub-calls
 \end{lemma}
 
 Proof: If the nodes are equal, they refer to same TBD function, $read$, $write$, $mod$, $memo$ or $par$. These functions are guaranteed to execute the same way if the input parameters are equal. Also, the tag of the node contains all parameters the function depends on, including free variables and higher order functions. Nodes are only equal if the tag equals. Accessing static or class variables from inside function parameters can be ruled out due to the constraints listed in section \ref{sec:constraints}. $\blacksquare$
@@ -55,13 +55,13 @@ To show that our trace distance algorithm finds a lower bound for change propaga
 $\delta(T, T') \leq \alpha(I, I')$
 \end{lemma} 
 Proof: Let $Y$ be the set off all nodes of $T$ without a cognate, let $R$ be the set of all nodes of $T'$ without a cognate. 
-That means, that for all nodes in $Y$ ther is no corresponding node with an equal tag in trace $T'$ and vice versa. Therefore, we have to at least re-evaluate all nodes within $Y$ and $R$, whereas the removal of a node counts as re-evaluation. Thus, the count of re-evaluated nodes is greater or equal to the trace distance. $\blacksquare$
+That means, that for all nodes in $Y$ there is no corresponding node with an equal tag in trace $T'$ and vice versa. Therefore, we have to at least re-evaluate all nodes within $Y$ and $R$, whereas the removal of a node counts as re-evaluation. Thus, the count of re-evaluated nodes is greater or equal to the trace distance. $\blacksquare$
 
 \begin{lemma}
 \label{lem:alphaGeq}
 $\delta(T, T') \geq \alpha(I, I')$
 \end{lemma} 
-Proof: Let $B$ be the set of all nodes in $T$ and $T'$ which have a cognate and are therefore equal. Lets assume that ther is a vertex $v$ in $B$ which is re-executed during change propagation by the optimal algorithm $A$. Due to lemma \ref{lem:equalExec} we know that this re-execution was unnecassary. Thereforew, our assumtion was wrong. We know now that an optimal algorithm does not re-evaluate vertixes which have a cognate, or in other words, it may only re-evaluate vertices which have no cognate. A the count of all vertices without a cognate equals the trace distance, we know that the count of re-evaluated nodes is lower or equal than the trace distance. $\blacksquare$
+Proof: Let $B$ be the set of all nodes in $T$ and $T'$ which have a cognate and are therefore equal. Lets assume that the is a vertex $v$ in $B$ which is re-executed during change propagation by the optimal algorithm $A$. Due to lemma \ref{lem:equalExec} we know that this re-execution was unnecessary. Therefore, our assumption was wrong. We know now that an optimal algorithm does not re-evaluate vertexes which have a cognate, or in other words, it may only re-evaluate vertices which have no cognate. A the count of all vertices without a cognate equals the trace distance, we know that the count of re-evaluated nodes is lower or equal than the trace distance. $\blacksquare$
 
 \begin{theorem}
 $\delta(T, T') = \alpha(I, I')$
