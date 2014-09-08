@@ -1,0 +1,27 @@
+
+\chapter{Introduction}
+\label{ch:Introduction}
+%[Explain Target: Incremental Computation, Change Propagation and Trace Distance] 
+
+For incremental programs, trace distance is an important metric, which indicates how well the program handles input changes. The objective of this work is to provide a software tool capable of calculating trace distance for certain incremental programs.  
+
+The term \textit{incremental program} refers to a program which, after a change of the program input, only re-evaluates the computation steps which depend on the changed parts of the input. Therefore, such a program can adjust the output faster than it would be possible by re-executing the whole program with the new input. In particular, it can be possible to adjust to constant-sized updates in constant time, even if a re-execution would bear polynomial time complexity or worse. The process of adjusting the program output and program state to input changes is called \textit{change propagation}. Incremental programs are also called \textit{dynamic programs} in literature. 
+
+\textit{Trace distance} can be roughly described as metric for the amount of differences in the internal program state between two executions of the same program with differing inputs. Since the changes in program state reflect the re-evaluated computation steps, his number is directly related to the time needed for change propagation. Trace distance can therefore be used as benchmark for incremental programs. 
+
+\subsection{Approaches to Incremental Computation}
+%Since incremental programs have been subject to research for over 30 years, different approaches exist. 
+
+%[Introduce Terminology: Self-Adjusting Computation]
+
+A well-known form of incremental programs are \textit{incremental} or \textit{dynamic algorithms}. Such algorithms are carefully modified to hold enough internal state to make change propagation possible. A very simple example for such an algorithm would be a basic insertion-sort algorithm. For insertion-sort, a newly added input value can simply be inserted into the output, a value removed from the input can be removed from the output and an updated input value can be removed and then added again. More sophisticated examples would be so-called \textit{kinetic algorithms} or \textit{kinetic data structures}, which are usually used to perform geometric calculations, like finding bounding boxes or intersection areas, on groups of moving objects.
+
+However, various sources point out that the utilization of such algorithms can be cumbersome. The development of incremental algorithms can be complex, they are usually single purpose and cannot be composed to a bigger applications in general. Therefore, the development of languages or plattforms which automate the process of deriving incremental programs from non-incremental programs. That means, that after such a transformation, a program should be capable of adjusting its internal state and the output to reflect changes of the program input. This particular approach to incremental computation is called \textit{self-adjusting computation}.
+
+For accomplishing self-adjusting computation, tracking control and data dependencies through the program and storing intermediate results can be used. These techniques are called \textit{directed dependence graphs (DDGs)} and \textit{memoization}, respectively. 
+In 2014, an self-adjusting computation platform called \textit{TBD}\footnote{To Be Determined} was developed at Carnegie Mellon University. The platform is implemented in the \textit{Scala} language and makes use of DDGs and memoization to accomplish self-adjusting computation. 
+
+\subsection{Content of this Work}
+
+This work focuses on the development of a tool, which is capabale of calculating trace distance for programs implemented on top of TBD. First, the principles of self-adjusting computation will be explained in depth, especially the process change propagation using DDGs and memoization. Second, the program interface of the TBD platform will be described. Third, our approach of calculating trace-distance will be discussed. Then, we discuss our implementation including the framework for data collection using scala macros. 
+Finally, we will show how our tool can be used for analyzing algorithms and discuss our results. 
