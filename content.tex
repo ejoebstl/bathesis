@@ -2,7 +2,16 @@
 \chapter{Self-Adjusting Programs}
 \label{ch:self_adjusting}
 
-\section{Memory Model}
+The principles of self-adjusting programs using DDGs and memoization was described by Acar in \cite{Acar2005thesis}. This chapter provides a summary of his work. 
+When changing the input set of a self-adjusting program, the program has to adjust the internal state and the program output to match the new input. This requires that the internal state of the program has to be known before propagating input changes. 
+
+Since functions which depend on certain input variables have to be located, control and data dependencies have to be known, too. Therefore, the program execution has to be tracked carefully, including functions which are being called. It is not straight-forward to detect and control reads and writes to abritary memory locations. Therefore, the need for a custom program model which enables us to track variables and functions arises.
+
+\section{Closure Machine Model}
+
+In a classical RAM model, a program can write and read abritary memory locations, any number of times. This makes it very hard to track dependencies. Even if tracking of dependencies is accomplished for a RAM model, the program can still overwrite memory locations which hold crucial information for program state, for example the results of previous computations. Therefore, the model for self-adjusting computation uses labeled memory locations, which can only be written once. 
+
+Functions can usually be referenced by their memory location, however this does not include the referencing environment of the function, like paramteres or free variables. The model solves this shortcoming by providing a set of functions to manipulate variables using a function or closure which is passed as parameter. Therefore the model is called the \textit{Closure Machine}. 
 
 \section{Directed Dependence Graphs}
 
