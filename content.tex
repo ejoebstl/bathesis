@@ -2,24 +2,137 @@
 \chapter{Self-Adjusting Programs}
 \label{ch:self_adjusting}
 
-The principles of self-adjusting programs using DDGs and memoization was described by Acar in \cite{Acar2005thesis}. This chapter provides a summary of his work. 
-When changing the input set of a self-adjusting program, the program has to adjust the internal state and the program output to match the new input. This requires that the internal state of the program has to be known before propagating input changes. 
+When changing the input set of a self-adjusting program, the program has to adjust the internal state and the program output to match the new input. This requires that the internal state of the program has to be known before propagating input changes. The first execution of the program, called \textit{Initial Run} executes the whole program with the given input and captures the program state. The state consits of all data and control dependencies of the execution and all functions called during program executing, including their referencing environment. 
+For each successive input update, a so called \textit{Change Propagation Algorithm} consults the program state, finds the parts of the program to reexecute and reexecutes them, updating the output and the state.  
+This chapter explains which datastructures are used to hold the state and how the mechanisms of change propagation work. The principles of self-adjusting programs using DDGs and memoization were first described by Acar in \cite{Acar2005thesis}, including a theoretical analysis. 
 
-Since functions which depend on certain input variables have to be located, control and data dependencies have to be known, too. Therefore, the program execution has to be tracked carefully, including functions which are being called. It is not straight-forward to detect and control reads and writes to abritary memory locations. Therefore, the need for a custom program model which enables us to track variables and functions arises.
-
-\section{Closure Machine Model}
-
-In a classical RAM model, a program can write and read abritary memory locations, any number of times. This makes it very hard to track dependencies. Even if tracking of dependencies is accomplished for a RAM model, the program can still overwrite memory locations which hold crucial information for program state, for example the results of previous computations. Therefore, the model for self-adjusting computation uses labeled memory locations, which can only be written once. 
-
-Functions can usually be referenced by their memory location, however this does not include the referencing environment of the function, like paramteres or free variables. The model solves this shortcoming by providing a set of functions to manipulate variables using a function or closure which is passed as parameter. Therefore the model is called the \textit{Closure Machine}. 
+As already mentioned, the a self-adjusting program has no way to modify the output directly. Instead, the change propagation is handled by the platform or language which provides us self-adjusting computation. For our simple map example from section \ref{sec:simple_example}, this means that we do no longer have to write specialized code to find the application of the mapping function and update the output. When using self-adjusting computation, we would just write the program in a suitable language, as we would write a non-incremental version, and the underlying platform will take care about dynamizing the program.
 
 \section{Directed Dependence Graphs}
 
+A \textit{Directed Dependence Graph} (\textit{DDG}) is a directed, acyclic graph. The nodes of this graph represent the function calls in the program. These nodes also hold the state of the referencing environment, or, in other words, including all parameters of the function and all variables bound from outer scopes. The edges represent control dependencies and data dependencies. 
+
+%Simple Map DDG
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=4cm,
+  thick,call node/.style={circle,fill=white!20,draw,font=\sffamily\Large\bfseries},
+  data node/.style={rectangle,fill=white!20,draw,font=\sffamily\Large\bfseries}]
+
+  \node[data node] (0) {0};
+  \node[data node] (1) [right of=0] {1};
+  \node[data node] (2) [right of=1] {2};
+  \node[data node] (3) [right of=2] {3};
+
+  \node[call node] (4) [below of=0, ultra thick] {map(0)};
+  \node[call node] (5) [below of=1] {map(1)};
+  \node[call node] (6) [below of=2] {map(2)};
+  \node[call node] (7) [below of=3] {map(3)};
+
+  \node[data node] (8) [below of=4] {0};
+  \node[data node] (9) [below of=5] {2};
+  \node[data node] (10) [below of=6] {4};
+  \node[data node] (11) [below of=7] {6};
+
+  %Input next edges
+  \path[every node/.style={font=\sffamily\small}, thin]
+    (0) edge node [above] {next} (1)
+    (1) edge node [above] {next} (2)
+    (2) edge node [above] {next} (3)
+    (8) edge node [above] {next} (9)
+    (9) edge node [above] {next} (10)
+    (10) edge node [above] {next} (11);
+
+  %Read/Write dependencies
+  \path[every node/.style={font=\sffamily\small, black}, dashed]
+    (0) edge node [left] {data} (4)
+    (1) edge node [left] {data} (5)
+    (2) edge node [left] {data} (6)
+    (3) edge node [left] {data} (7)
+    (4) edge node [left] {data} (8)
+    (5) edge node [left] {data} (9)
+    (6) edge node [left] {data} (10)
+    (7) edge node [left] {data} (11);
+
+  %Controld ependencies
+  \path[every node/.style={font=\sffamily\small, black}, ultra thick]
+    (4) edge node [above] {call} (5)
+    (5) edge node [above] {call} (6)
+    (6) edge node [above] {call} (7);
+\end{tikzpicture}
+\end{center}
+\caption{The DDG of a map operation with four list elements}
+\label{fig:map_ddg}
+\end{figure}
+
+Figure \ref{fig:map_ddg} shows the DDG of a single execution of an recursive implementation of our map-sample from Section \ref{sec:simple_example} with four input elements. The program consists of a single function $map$ which reads the element, applies the mapping function $f$ to the value of the element and calls $map$ again with the elements successor. The square nodes at the top denote elements of the input list. The square nodes at the bottom represent elements of the output list. The round nodes represent function calls to the function $map$. 
+
+The edges labeled with \textit{next} indicate the next pointers of the input and output list. Those edges are not a part of the DDG. The dashed edges labeled with \textit{data} correspond to data dependencies. Note that there is a \textit{read} dependency between from each input element to the corresponding application of the mapping function $f$ and from there to the corresponding output element. The thick edges labelled with \textit{call} correspond to the control dependencies. Those control dependencies reflect, that $map$ is recursively called for each element. 
+
+On an input change, the change propagation would now track all outgoing dependencies from the changed input values and re-execute the nodes which are dependant on the changed value. During this process, it is possible that values which affect other parts of the program are updated. Those values are then queued for change propagation. Also, since new function calls might be placed during change propagation, the program structure and therefore the DDG can change.  
+
+%Simple Map DDG with change propagation
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=4cm,
+  thick,call node/.style={circle,fill=white!20,draw,font=\sffamily\Large\bfseries},
+  data node/.style={rectangle,fill=white!20,draw,font=\sffamily\Large\bfseries}]
+
+  \node[data node] (0) {0};
+  \node[data node] (1) [right of=0] {1};
+  \node[data node] (2) [right of=1, style={fill=red}] {6};
+  \node[data node] (3) [right of=2] {3};
+
+  \node[call node] (4) [below of=0, ultra thick] {map(0)};
+  \node[call node] (5) [below of=1] {map(1)};
+  \node[call node] (6) [below of=2, style={fill=red}] {map(6)};
+  \node[call node] (7) [below of=3, style={fill=red}] {map(3)};
+
+  \node[data node] (8) [below of=4] {0};
+  \node[data node] (9) [below of=5] {2};
+  \node[data node] (10) [below of=6, style={fill=red}] {12};
+  \node[data node] (11) [below of=7, style={fill=red}] {6};
+
+  %Input next edges
+  \path[every node/.style={font=\sffamily\small}, thin]
+    (0) edge node [above] {next} (1)
+    (1) edge node [above] {next} (2)
+    (2) edge node [above] {next} (3)
+    (8) edge node [above] {next} (9)
+    (9) edge node [above] {next} (10)
+    (10) edge node [above] {next} (11);
+
+  %Read/Write dependencies
+  \path[every node/.style={font=\sffamily\small, black}, dashed]
+    (0) edge node [left] {} (4)
+    (1) edge node [left] {} (5)
+    (3) edge node [left] {} (7)
+    (4) edge node [left] {} (8)
+    (5) edge node [left] {} (9);
+
+  \path[every node/.style={font=\sffamily\small, black}, red, dashed, ultra thick]
+    (2) edge node [left] {} (6)
+    (6) edge node [left] {} (10)
+    (7) edge node [left] {} (11);
+
+  %Controld ependencies
+  \path[every node/.style={font=\sffamily\small, black}, ultra thick]
+    (4) edge node [above] {} (5)
+    (5) edge node [above] {} (6);
+
+  \path[every node/.style={font=\sffamily\small, black}, red, ultra thick]
+    (6) edge node [above] {} (7);
+\end{tikzpicture}
+\end{center}
+\caption{The DDG of a map after change propagation}
+\label{fig:map_change_ddg}
+\end{figure}
+
+Figure \ref{fig:map_change_ddg} shows the DDG of the simple map example after changing the third input value from $2$ to $6$. The highlighted edges have been traversed, and the highlighted nodes were therefore re-executed. It can be seen that the node $map(3)$ has been re-executed, even if that re-execution is not necessary. To circumvent this shortcoming, another technique is necessarry: \textit{Function Caching} or also called \textit{Memoization}.
+
 \section{Memoization}
 
-\section{Change Propagation}
-
-\section{Example}
+\section{A more complex example}
 
 \chapter{The TBD Platform}
 \label{ch:tbd_platform}
