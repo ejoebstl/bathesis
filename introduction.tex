@@ -27,11 +27,11 @@ A well-known form of incremental programs are \textit{incremental} or \textit{dy
 
 However, in \cite{Acar2005thesis}, Acar pointed out that the utilization of such algorithms can be cumbersome. The development of incremental algorithms might be complex, the algorithms are usually single purpose and they cannot be composed to a bigger applications in general. Therefore, the development of languages or plattforms which automate the process of deriving incremental programs from non-incremental programs is of interest. After such a transformation, the program should be capable of adjusting its internal state and the program output to reflect changes of the program input. This particular approach to incremental computation is called \textit{self-adjusting computation}.
 
-For accomplishing self-adjusting computation, tracking control and data dependencies through the program and storing intermediate results can be used. These techniques are called \textit{directed dependence graphs (DDGs)} and \textit{memoization}, respectively. 
+For accomplishing self-adjusting computation, tracking control and data dependencies through the program and storing intermediate results can be used. These techniques are called \textit{dynamic dependence graphs (DDGs)} and \textit{memoization}, respectively. 
 
 In 2014, an self-adjusting computation platform called \textit{TBD} was developed at Carnegie Mellon University. TBD is an abbrevation for \textit{To Be Determined}. The platform is implemented in the \textit{Scala} language and makes use of DDGs and memoization to accomplish self-adjusting computation. 
 
 \section{Contents of this Work}
 
 This work focuses on the development of a tool, which is capabale of calculating trace distance for programs implemented on top of TBD. First, the principles of self-adjusting computation will be explained in depth, especially the process change propagation using DDGs and memoization. Second, the program interface of the TBD platform will be described. Third, our approach of calculating trace-distance will be discussed. Then, we discuss our implementation including the framework for data collection using scala macros. 
-Finally, we will show how our tool can be used for analyzing algorithms and discuss our results. 
+Finally, we will show how our tool can be used for analyzing algorithms by discussing the implementation of [todo]basic algorithms. 
