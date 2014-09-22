@@ -204,11 +204,11 @@ If we consult our simple map example with two executions which only differ in on
 
 It is important to realize that trace distance is independent of memoization. The reason for this is that function calls which are not memoized can still be equal, due to having equal function arguments. Therefore, the memoized and unmemoized versions of map have equal trace distance for each pair of executions, even though change propagation times differ heavily.    
 
-[Todo: Maybe two small graphs here, with diffs highlighted.]
+%[Todo: Maybe two small graphs here, with diffs highlighted.]
 
-\section{A more complex example}
+\section{A more complex Example}
 
-As already mentioned, the example from Section \ref{ch:use_cases} does not have dependencies between different function calls, and is therefore straight forward to dynamize. We therefore conclude this section with a more complex example. 
+As already mentioned, the example from Section \ref{sec:simple_example} does not have dependencies between different function calls, and is therefore straight forward to dynamize. We therefore conclude this section with a more complex example. 
 
 Many programming languages feature a function which is capable of combining all elements of a list with some associative operator, until there is only a single result left. This operation is known as \textit{reduce}, \textit{combine} or \textit{fold}.  
 
@@ -384,29 +384,29 @@ Figure \ref{fig:tree_reduce} shows the DDG of the tree-like reduce operation. It
 While the upper bound of $O(log(n))$ holds for updates of values, this bound is not guaranteed for inserts or deletions of whole list elements from the input list. If we remove or add a single element, we change the index of all successive elements. Since we combine each odd element with its successor, changing the index of elements also changes which elements are combined. If now, for example, the first element is removed, we have to re-evaluate the reduction of all successors, which equals an re-evaluation for the entire list. 
 It is possible to circumvent this drawback by using a slightly more complicated approach which involves randomization. This approach is discussed in section \ref{ch:use_cases}. 
 
-\chapter{The TBD Platform}
-\label{ch:tbd_platform}
+%\chapter{The TBD Platform}
+%\label{ch:tbd_platform}
 
-\section{Program interface}
+%\section{Program interface}
 
-\chapter{Calculating Trace Distance}
-\label{ch:implementation}
+%\chapter{Calculating Trace Distance}
+%\label{ch:implementation}
 
-\section{Node Tags}
+%\section{Node Tags}
 
-\section{Trace Distance}
+%\section{Trace Distance}
 
-\chapter{Implementation}
-\label{ch:impl}
+%\chapter{Implementation}
+%\label{ch:impl}
 
-\section{Architecture}
+%\section{Architecture}
 
-\section{Data Collection}
+%\section{Data Collection}
 
-\subsection{Usage of Scala Macros}
+%\subsection{Usage of Scala Macros}
 
-\chapter{Use Cases}
-\label{ch:use_cases}
+%\chapter{Use Cases}
+%\label{ch:use_cases}
 
-\chapter{Discussion}
-\label{ch:discussion}
+%\chapter{Discussion}
+%\label{ch:discussion}
