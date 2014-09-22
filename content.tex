@@ -2,8 +2,8 @@
 \chapter{Self-Adjusting Programs}
 \label{ch:self_adjusting}
 
-When changing the input set of a self-adjusting program, the program has to adjust the internal state and the program output to match the new input. This requires that the internal state of the program has to be known before propagating input changes. The first execution of the program, called \textit{Initial Run} executes the whole program with the given input and captures the program state. The state consits of all data and control dependencies of the execution and all functions called during program executing, including their referencing environment. 
-For each successive input update, a so called \textit{Change Propagation Algorithm} consults the program state, finds the parts of the program to reexecute and reexecutes them, updating the output and the state.  
+When changing the input set of a self-adjusting program, the program has to adjust the internal state and the program output to match the new input. This requires that the internal state of the program has to be known before propagating input changes. The first execution of the program, called \textit{Initial Run} executes the whole program with the given input and captures the program state. The state consists of all data and control dependencies of the execution and all functions called during program executing, including their referencing environment. 
+For each successive input update, a so called \textit{Change Propagation Algorithm} consults the program state, finds the parts of the program to re-execute and re-executes them, updating the output and the state.  
 This chapter explains which datastructures are used to hold the state and how the mechanisms of change propagation work. The principles of self-adjusting programs using DDGs and memoization were first described by Acar in \cite{Acar2005thesis}, including a theoretical analysis. 
 
 As already mentioned, the a self-adjusting program has no way to modify the output directly. Instead, the change propagation is handled by the platform or language which provides us self-adjusting computation. For our simple map example from section \ref{sec:simple_example}, this means that we do no longer have to write specialized code to find the application of the mapping function and update the output. When using self-adjusting computation, we would just write the program in a suitable language, as we would write a non-incremental version, and the underlying platform will take care about dynamizing the program.
@@ -67,9 +67,9 @@ A \textit{Dynamic Dependence Graph} (\textit{DDG}) is a directed, acyclic graph.
 
 Figure \ref{fig:map_ddg} shows the DDG of a single execution of an recursive implementation of our map-sample from Section \ref{sec:simple_example} with four input elements. The program consists of a single function $map$ which reads the element, applies the mapping function $f$ to the value of the element and calls $map$ again with the elements successor. The square nodes at the top denote elements of the input list. The square nodes at the bottom represent elements of the output list. The round nodes represent function calls to the function $map$. 
 
-The edges labeled with \textit{next} indicate the next pointers of the input and output list. Those edges are not a part of the DDG. The dashed edges labeled with \textit{data} correspond to data dependencies. Note that there is a \textit{read} dependency between from each input element to the corresponding application of the mapping function $f$ and from there to the corresponding output element. The thick edges labelled with \textit{call} correspond to the control dependencies. Those control dependencies reflect, that $map$ is recursively called for each element. 
+The thin edges labeled with \textit{next} indicate the next pointers of the input and output list's nodes. Those edges are not a part of the DDG. The dashed edges labeled with \textit{data} correspond to data dependencies. Note that there is a \textit{read} dependency from each input element to the corresponding application of the mapping function $f$ and from there to the corresponding output element. The thick edges labeled with \textit{call} correspond to the control dependencies. Those control dependencies reflect that $map$ is recursively called for each element. 
 
-On an input change, the change propagation would now track all outgoing dependencies from the changed input values and re-execute the nodes which are dependant on the changed value. During this process, it is possible that values which affect other parts of the program are updated. Those values are then queued for change propagation. Also, since new function calls might be placed during change propagation, the program structure and therefore the DDG can change.  
+On an input change, the change propagation would now track all outgoing dependencies from the changed input values and re-execute the nodes which are dependent on the changed value. During this process, it is possible that values which affect other parts of the program are updated. Those values are then queued for change propagation. Also, since new function calls might be placed during change propagation, the program structure and therefore the DDG can change.  
 
 %Simple Map DDG with change propagation
 \begin{figure}
@@ -79,18 +79,18 @@ On an input change, the change propagation would now track all outgoing dependen
   data node/.style={rectangle,fill=white!20,draw}]
 
   \node[data node] (0) {0};
-  \node[data node] (1) [right of=0] {1};
-  \node[data node] (2) [right of=1, style={draw=red}] {6};
+  \node[data node] (1) [right of=0, style={draw=red}] {4};
+  \node[data node] (2) [right of=1] {2};
   \node[data node] (3) [right of=2] {3};
 
   \node[call node] (4) [below of=0, ultra thick] {map(0)};
-  \node[call node] (5) [below of=1] {map(1)};
-  \node[call node] (6) [below of=2, style={draw=red}] {map(6)};
+  \node[call node] (5) [below of=1, style={draw=red}] {map(4)};
+  \node[call node] (6) [below of=2, style={draw=red}] {map(2)};
   \node[call node] (7) [below of=3, style={draw=red}] {map(3)};
 
   \node[data node] (8) [below of=4] {0};
-  \node[data node] (9) [below of=5] {2};
-  \node[data node] (10) [below of=6, style={draw=red}] {12};
+  \node[data node] (9) [below of=5, style={draw=red}] {8};
+  \node[data node] (10) [below of=6, style={draw=red}] {4};
   \node[data node] (11) [below of=7, style={draw=red}] {6};
 
   %Input next edges
@@ -105,13 +105,13 @@ On an input change, the change propagation would now track all outgoing dependen
   %Read/Write dependencies
   \path[dashed]
     (0) edge node [left] {} (4)
-    (1) edge node [left] {} (5)
     (3) edge node [left] {} (7)
-    (4) edge node [left] {} (8)
-    (5) edge node [left] {} (9);
+    (4) edge node [left] {} (8);
 
   \path[red, dashed, ultra thick]
+    (1) edge node [left] {} (5)
     (2) edge node [left] {} (6)
+    (5) edge node [left] {} (9)
     (6) edge node [left] {} (10)
     (7) edge node [left] {} (11);
 
@@ -128,13 +128,13 @@ On an input change, the change propagation would now track all outgoing dependen
 \label{fig:map_change_ddg}
 \end{figure}
 
-Figure \ref{fig:map_change_ddg} shows the DDG of the simple map example after changing the third input value from $2$ to $6$. The highlighted edges have been traversed, and the highlighted nodes were therefore updated. It can be seen that the node $map(3)$ has been re-executed, even if that re-execution is not necessary. For a long list, this would lead to unnecessarily re-evaluating a lot of function calls. The result is linear time complexity in the worst case, even if only a single element has been updated. To circumvent this shortcoming, another technique is necessarry: \textit{Memoization}.
+Figure \ref{fig:map_change_ddg} shows the DDG of the simple map example after changing the second input value from $1$ to $4$. The highlighted edges have been traversed, and the highlighted nodes were therefore updated. It can be seen that the nodes $map(2)$ and $map(3)$ have been re-executed. The re-execution was not necessary, since the parameters and therefore the result of the function call were the same before change propagation. For a long list, this would lead to unnecessarily re-evaluating a lot of function calls. The outcome of such a behavior is linear time complexity in the worst case, even if only a single element has been updated. To circumvent this shortcoming, another technique is required: \textit{Memoization}.
 
 \section{Memoization}
 
-\textit{Memoization}, or also called \textit{Function Caching} is the task of storing results of expensive computations. Basically, it is possible to remember the input parameters and the result for a given function. Then, the parameters of repetive calls can be compared to the stored parameters. If the parameters match, the result can be re-used. Such a match is called \textit{memo match}.
+\textit{Memoization}, or also called \textit{Function Caching} is the task of storing results of expensive computations. Basically, it is possible to remember the input parameters and the result for a given function. Then, the parameters of repetitive calls can be compared to the stored parameters. If the parameters match, the result can be re-used. Such a match is called \textit{memo match}.
 
-In combination with DDGs, this means that we can re-use whole subtrees of the DDG during change propagation. Figure \ref{fig:map_change_ddg_memo} illustrates the change propagation process using a \textit{memoized DDG}. Again, the change propagation algorithm re-evaluates functions dependent on the changed input. When the algorithm reaches the call to $map(3)$ however, the parameters of the call match the previous call. The algorithm therefore skips re-executing the call to $map(3)$ and re-uses the subtree. With this technique, the update of a constant number of elements finishes in costant time, for lists of any length. 
+In combination with DDGs, this means that we can re-use whole subtrees of the DDG during change propagation. Figure \ref{fig:map_change_ddg_memo} illustrates the change propagation process using a \textit{memoized DDG}. Again, the change propagation algorithm re-evaluates functions dependent on the changed input. When the algorithm reaches the call to $map(2)$ however, the parameters of the call match the previous call. The algorithm therefore skips re-executing the call to $map(2)$ and re-uses the subtree. With this technique, the update of a constant number of elements finishes in constant time, for lists of any length. 
 The memo match is highlighted in green. 
 
 %Simple Map DDG with change propagation
@@ -145,18 +145,18 @@ The memo match is highlighted in green.
   data node/.style={rectangle,fill=white!20,draw}]
 
   \node[data node] (0) {0};
-  \node[data node] (1) [right of=0] {1};
-  \node[data node] (2) [right of=1, style={draw=red}] {6};
+  \node[data node] (1) [right of=0, style={draw=red}] {4};
+  \node[data node] (2) [right of=1] {2};
   \node[data node] (3) [right of=2] {3};
 
   \node[call node] (4) [below of=0, ultra thick] {map(0)};
-  \node[call node] (5) [below of=1] {map(1)};
-  \node[call node] (6) [below of=2, style={draw=red}] {map(6)};
-  \node[call node] (7) [below of=3, style={draw=green}] {map(3)};
+  \node[call node] (5) [below of=1, style={draw=red}] {map(4)};
+  \node[call node] (6) [below of=2, style={draw=green}] {map(2)};
+  \node[call node] (7) [below of=3] {map(3)};
 
   \node[data node] (8) [below of=4] {0};
-  \node[data node] (9) [below of=5] {2};
-  \node[data node] (10) [below of=6, style={draw=red}] {12};
+  \node[data node] (9) [below of=5, style={draw=red}] {8};
+  \node[data node] (10) [below of=6] {4};
   \node[data node] (11) [below of=7] {6};
 
   %Input next edges
@@ -171,23 +171,23 @@ The memo match is highlighted in green.
   %Read/Write dependencies
   \path[dashed]
     (0) edge node [left] {} (4)
-    (1) edge node [left] {} (5)
+    (2) edge node [left] {} (6)
     (3) edge node [left] {} (7)
     (4) edge node [left] {} (8)
-    (5) edge node [left] {} (9)
+    (6) edge node [left] {} (10)
     (7) edge node [left] {} (11);
 
   \path[red, dashed, ultra thick]
-    (2) edge node [left] {} (6)
-    (6) edge node [left] {} (10);
+    (1) edge node [left] {} (5)
+    (5) edge node [left] {} (9);
 
   %Control ependencies
   \path[ultra thick]
     (4) edge node [above] {} (5)
-    (5) edge node [above] {} (6);
+    (6) edge node [above] {} (7);
 
   \path[red, ultra thick]
-    (6) edge node [above] {} (7);
+    (5) edge node [above] {} (6);
 \end{tikzpicture}
 \end{center}
 \caption{The memoized DDG of map after change propagation}
@@ -196,23 +196,33 @@ The memo match is highlighted in green.
 
 It should be noted that for memoization to work, all functions are required to be \textit{pure} or \textit{side-effect free}. 
 
+\section{Trace Distance}
+
+Since each node of a DDG hold all information to uniquely identify a function call, the DDG can be used to compare two executions. For each pair of executions $(E, F)$, we count all the nodes which are in the DDG of $E$ but not in the DDG of $F$ and vice versa. The sum of those counts is called \textit{Trace Distance}. Trace distance provides an indicator about how much two executions of a program differ. During a change propagation, at least those differences have to be eliminated by re-executing the corresponding nodes. Therefore, the trace distance of two executions provides a lower bound for change propagation time between those executions, which is a very useful feature. 
+
+If we consult our simple map example with two executions which only differ in one input element, the trace distance will be exactly one, since only a single node will be re-evaluated. This is also illustrated in Figure \ref{fig:map_change_ddg_memo}.
+
+It is important to realize that trace distance is independent of memoization. The reason for this is that function calls which are not memoized can still be equal, due to having equal function arguments. Therefore, the memoized and unmemoized versions of map have equal trace distance for each pair of executions, even though change propagation times differ heavily.    
+
+[Todo: Maybe two small graphs here, with diffs highlighted.]
+
 \section{A more complex example}
 
-As already mentioned, the example from Section \ref{ch:use_cases} does not have dependencies between different function calls, and is therefore straight forward to dynamize. We therefore complete this section with a more complex example. 
+As already mentioned, the example from Section \ref{ch:use_cases} does not have dependencies between different function calls, and is therefore straight forward to dynamize. We therefore conclude this section with a more complex example. 
 
-Many programming languages feature an operator which is capable of combining all elements with some operator, until there is only a single result left. This operation is known as \textit{reduce}, \textit{combine} or \textit{fold}.  
+Many programming languages feature a function which is capable of combining all elements of a list with some associative operator, until there is only a single result left. This operation is known as \textit{reduce}, \textit{combine} or \textit{fold}.  
 
 \subsection{Naive Approach}
 
 Again, we consider a linked list $A = (a_1, ..., a_n)$ with list nodes $a_i = (v_i, n_i)$, each having a value and a next node, and a combining function $f(v_x, v_y) = r$, where $v_x$ and $v_y$ are input values and $r$ denotes the result. $v_x$, $v_y$ and $r$ are of the same type. Further, we consider the list nodes immutable for our program only. Changes can be done from outside the program when the input changes.
 
-A classic reduce operation would read the first two nodes $a_1$ and $a_2$ in the list, combine the value $v_1$ with the calue $v_2$ and remember the result $f(v_1, v_2) = r_1$. Then, the next node $a_3$ is read, the value is combined with the previous result $r_1$ and the result $r_2$ is stored again. In general we can say that for each node $a_i$ we combine the value of the node $v_i$ with the previous result $r_{i-1}$. The last result $r_{n-1}$ is the final result of the operator. 
+A classic reduce operation would read the first two nodes $a_1$ and $a_2$ in the list, combine the value $v_1$ with the value $v_2$ and remember the result $f(v_1, v_2) = r_1$. Then, the next node $a_3$ is read, the value is combined with the previous result $r_1$ and the result $r_2$ is stored again. In general we can say that for each node $a_i$ we combine the value of the node $v_i$ with the previous result $r_{i-1}$. The last result $r_{n-1}$ is the final result of the function. 
 
 If we now track dependencies for this operation, each result $r_i$ depends on the previous result $r_{i - 1}$ or the initial value $r_0$. Each result $r_i$ also depends on the value $v_i$ of the corresponding node $a_i$. In other words, the fold operation for each node $a_j, j > 1$ depends on the successors of the respective node $a_{j - k}, 0 < k < j$.
 
 The dependency graph of such an implementation is shown in figure \ref{fig:naive_reduce}. 
 
-%Folfl DDG
+%Foldl DDG
 \begin{figure}
 \begin{center}
 \begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=2cm,
@@ -283,9 +293,9 @@ The dependency graph of such an implementation is shown in figure \ref{fig:naive
 \label{fig:naive_reduce}
 \end{figure}
 
-If now a change to the first node in the input happens, a change propagation always has to re-execute the fold operation for the whole list, since every single intermediate result and the final result depend on the first node of the list. For this case, the asymptotic complexity of change propagation lies within $O(n)$ whereas $n$ donates the input since. This expected bound also holds for the average case. The algorithm therefore updates in $O(n)$, which is not better than the expected time for a re-execution. 
+If now a change to the first node in the input happens, a change propagation always has to re-execute the fold operation for the whole list, since every single intermediate result and the final result depend on the first node of the list. For this case, the asymptotic complexity of change propagation lies within $O(n)$, where $n$ donates the input since. This expected bound also holds for the average case. The algorithm therefore updates in $O(n)$, which is not better than the expected time for a re-execution. 
 
-Note that memoization is of no help here, since there are data dependencies to the result of the previous reduction, involving all predecessors of the node.
+Note that memoization is of no help here, since there are data dependencies from each function call to the result of the previous reduction. Every function call depends on all it's predecessors in the DDG.
 
 \subsection{Tree-Like Implementation}
 
@@ -293,7 +303,7 @@ Combining all elements in a list can also be done in a \textit{tree-like} manner
 
 More formally, for our input list $A_1 = (a_{1, 1}, a_{1, 2}, ..., a_{1, n})$, we combine each element with an odd index $a_i$ with its successor $a_{i + 1}$, and concatenate the results to a new list $A_2 = (a_{(2, 1)}, ..., a_{2, k})$. If the input list has an odd number of elements, the last element of the input list is added to the result list. Then, we repeat this operation with the result list, until there is only a single element left.
 
-During each reduction step, half of the list is eliminated. That implies that for $n$ input elements, the count of reduction steps lies within the complexity class $O(log(n))$. If we consult the data dependencies, each element in the list $A_j, j > 1$ directly depends on two elements, which are contained in the list $A_{j - i}$. Since there are only $O(log(n))$ reduction steps and therefore only $O(log(n))$ intermediate lists, the length of the dependency path for each element, including the final result, lies within $O(log(n))$. It is therefore possible to propagate the change of a constant number of values in $(O(log(n))$. 
+During each reduction step, half of the list is eliminated. That implies that for $n$ input elements, the count of reduction steps lies within the complexity class $O(log(n))$. If we consult the data dependencies, each element in the list $A_j, j > 1$ directly depends on two elements, which are contained in the list $A_{j - i}$. Since there are only $O(log(n))$ reduction steps and therefore only $O(log(n))$ intermediate lists, the length of the path of dependencies from the input to each DDG node, including the final result, lies within $O(log(n))$. It is therefore possible to propagate the change of a constant number of values in $O(log(n)$. 
 
 %Tree-Fold DDG
 \begin{figure}
@@ -369,7 +379,7 @@ During each reduction step, half of the list is eliminated. That implies that fo
 \label{fig:tree_reduce}
 \end{figure}
 
-Figure \ref{fig:tree_reduce} shows the DDG of the tree-like reduce operation. It can be recognized that there are no data dependencies, which connect all nodes, like before. The control dependencies, while still existant, do not bear any problems, since we can utilize memoization to stop change propagation between nodes which feature no data dependencies. 
+Figure \ref{fig:tree_reduce} shows the DDG of the tree-like reduce operation. It can be recognized that there are no data dependencies, which connect all nodes, like before. The control dependencies, while still existent, do not bear any problems, since we can utilize memoization to stop change propagation between nodes which feature no data dependencies. 
 
 While the upper bound of $O(log(n))$ holds for updates of values, this bound is not guaranteed for inserts or deletions of whole list elements from the input list. If we remove or add a single element, we change the index of all successive elements. Since we combine each odd element with its successor, changing the index of elements also changes which elements are combined. If now, for example, the first element is removed, we have to re-evaluate the reduction of all successors, which equals an re-evaluation for the entire list. 
 It is possible to circumvent this drawback by using a slightly more complicated approach which involves randomization. This approach is discussed in section \ref{ch:use_cases}. 
