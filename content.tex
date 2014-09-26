@@ -197,12 +197,16 @@ The memo match is highlighted in green.
 It should be noted that for memoization to work, all functions are required to be \textit{pure} or \textit{side-effect free}. 
 
 \section{Trace Distance}
+\label{sec:trace_distance}
 
 Since each node of a DDG hold all information to uniquely identify a function call, the DDG can be used to compare two executions. For each pair of executions $(E, F)$, we count all the nodes which are in the DDG of $E$ but not in the DDG of $F$ and vice versa. The sum of those counts is called \textit{Trace Distance}. Trace distance provides an indicator about how much two executions of a program differ. During a change propagation, at least those differences have to be eliminated by re-executing the corresponding nodes. Therefore, the trace distance of two executions provides a lower bound for change propagation time between those executions, which is a very useful feature. 
+
+Calculating trace distance is simple: For two executions $(E, F)$, all nodes of $E$ which have an equivalent node in $F$ can be found using a greedy matching. The trace distance between the executions is the count of all other nodes. 
 
 If we consult our simple map example with two executions which only differ in one input element, the trace distance will be exactly one, since only a single node will be re-evaluated. This is also illustrated in Figure \ref{fig:map_change_ddg_memo}.
 
 It is important to realize that trace distance is independent of memoization. The reason for this is that function calls which are not memoized can still be equal, due to having equal function arguments. Therefore, the memoized and unmemoized versions of map have equal trace distance for each pair of executions, even though change propagation times differ heavily.    
+
 
 %[Todo: Maybe two small graphs here, with diffs highlighted.]
 
@@ -384,17 +388,169 @@ Figure \ref{fig:tree_reduce} shows the DDG of the tree-like reduce operation. It
 While the upper bound of $O(log(n))$ holds for updates of values, this bound is not guaranteed for inserts or deletions of whole list elements from the input list. If we remove or add a single element, we change the index of all successive elements. Since we combine each odd element with its successor, changing the index of elements also changes which elements are combined. If now, for example, the first element is removed, we have to re-evaluate the reduction of all successors, which equals an re-evaluation for the entire list. 
 It is possible to circumvent this drawback by using a slightly more complicated approach which involves randomization. This approach is discussed in section \ref{ch:use_cases}. 
 
-%\chapter{The TBD Platform}
-%\label{ch:tbd_platform}
+\chapter{The TBD Platform}
+\label{ch:tbd_platform}
+
+\textit{TBD}, short for \textit{To Be Determined} is a platform for self-adjusting computation. TBD was developed in 2014 at Carnegie Mellon University, the sourcode and documentation of TBD can be found at \url{https://github.com/twmarshall/tbd/}. TBD is implemented in \textit{Scala}, an object-functional language implemented on top of the \textit{Java Virtual Machine}. All programs written on top of TBD are self-adjusting and therefore incremental. For calculating trace distance, the implementation of the underlying platform is of importance, since it influences how programs are structured and how DDG nodes represent function calls. 
+
+It is important to note that all functions in programs written on top of TBD have to be side-effect free and deterministic. This means that no function is allowed to write global variables and that two function calls with the same arguments must produce the same outcome. If this is not respected by a program, change propagation will fail, since the corresponding dependencies can not be tracked. 
+
+This section discusses how TBD provides self-adjusting computation, how variables are represented, and especially how programs on top of TBD are written. 
+
+\section{Modifiables}
+
+%[Maybe move this chapter to Self-Adjusting computing]
+
+For accomplishing self-adjusting computation, it is necassary to detect when a memory locations is read or written. With a classic machine model which features random access memory, reads and writes can be hard to track. Furthermore, high-level languages like Scala usually do not provide data types to reference memory locations. 
+
+Therfore, all variables which need to be tracked are wrapped into so called \textit{Modifiables}, which are typed references to some storage location. Each modifiable has a unique identifier which can be used to reference the modifiable through the program. All modifiables have to be explecitly allocated, read and written by calling correspnding functions. It is therefore possible to recognize dependencies between allocation, write and read of a modifiable. 
+
+\subsection{Keyed Allocation}
+\label{sec:keyed_alloc}
+
+In general the allocation of a modifiable creates a new modifiable with a new, unique id. If we, however, read a modifiable we created ourselves later during execution, we have to update all calls which pass the modifiable to where it is finally read. The reason for this is that a new mod has just been introduced and has to replace the old mod through the computation. Since reads and writes to modifiables can be tracked, this is unnecassary, since the change propagation mechanism would take care of updating the calculation where possible. 
+
+To illustrate this problem, consider a simple recursive list reverse operation. This operation takes an input list $A = (a_1, ..., a_n)$ and creates the output list $A_r = (a_n, ..., a_1)$. When we implement such an operation recursively, we usually read the list from front to end and prepend each element to an accumulator list, which holds the reversed $A'$ list in the end. Whenever we prepend an element to the accumulator list, however we have to create a new modifiable to hold the new list element. This list element serves as the head $k_n$ of the accumulator list for the next step.  
+
+%Reverse DDG
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=2cm,
+  thick,call node/.style={circle,fill=white!20,draw},
+  data node/.style={rectangle,fill=white!20,draw}]
+
+  \node[data node] (0) {0};
+  \node[data node] (1) [right of=0] {1};
+  \node[data node] (2) [right of=1] {2};
+  \node[data node] (3) [right of=2] {3};
+  \node[data node] (4) [right of=3] {4};
+  \node[data node] (5) [right of=4] {5};
+  \node[data node] (6) [right of=5] {6};
+  \node[data node] (7) [right of=6] {7};
+
+  \node[call node] (9) [below of=0, ultra thick] {$r(0, -)$};
+  \node[call node] (10) [below of=1] {$r(1, k_0)$};
+  \node[call node] (11) [below of=2] {$r(2, k_1)$};
+  \node[call node] (12) [below of=3] {$r(3, k_2)$};
+  \node[call node] (13) [below of=4] {$r(4, k_3)$};
+  \node[call node] (14) [below of=5] {$r(5, k_4)$};
+  \node[call node] (15) [below of=6] {$r(6, k_5)$};
+  \node[call node] (16) [below of=7] {$r(7, k_6)$};
+
+  \node[data node] (18) [below of=16] {7};
+  \node[data node] (19) [below of=15] {6};
+  \node[data node] (20) [below of=14] {5};
+  \node[data node] (21) [below of=13] {4};
+  \node[data node] (22) [below of=12] {3};
+  \node[data node] (23) [below of=11] {2};
+  \node[data node] (24) [below of=10] {1};
+  \node[data node] (25) [below of=9] {0};
+
+  %Input/Output next edges
+  \path[thin]
+    (0) edge node [above] {} (1)
+    (1) edge node [above] {} (2)
+    (2) edge node [above] {} (3)
+    (3) edge node [above] {} (4)
+    (4) edge node [above] {} (5)
+    (5) edge node [above] {} (6)
+    (6) edge node [above] {} (7)
+
+    (18) edge node [above] {} (19)
+    (19) edge node [above] {} (20)
+    (20) edge node [above] {} (21)
+    (21) edge node [above] {} (22)
+    (22) edge node [above] {} (23)
+    (23) edge node [above] {} (24)
+    (24) edge node [above] {} (25);
+
+  %Read/Write dependencies
+  \path[dashed]
+    (0) edge node [left] {} (9)
+    (1) edge node [left] {} (10)
+    (2) edge node [left] {} (11)
+    (3) edge node [left] {} (12)
+    (4) edge node [left] {} (13)
+    (5) edge node [left] {} (14)
+    (6) edge node [left] {} (15)
+    (7) edge node [left] {} (16)
+
+    (16) edge node [left] {} (18)
+    (15) edge node [left] {} (19)
+    (14) edge node [left] {} (20)
+    (13) edge node [left] {} (21)
+    (12) edge node [left] {} (22)
+    (11) edge node [left] {} (23)
+    (10) edge node [left] {} (24)
+    (9) edge node [left] {} (25)
+
+    (9) edge [bend right] node {} (10)
+    (10) edge [bend right] node {} (11)
+    (11) edge [bend right] node {} (12)
+    (12) edge [bend right] node {} (13)
+    (13) edge [bend right] node {} (14)
+    (14) edge [bend right] node {} (15)
+    (15) edge [bend right] node {} (16);
+
+  %Control ependencies
+  \path[ultra thick]
+    (9) edge node [left] {} (10)
+    (10) edge node [left] {} (11)
+    (11) edge node [left] {} (12)
+    (12) edge node [left] {} (13)
+    (13) edge node [left] {} (14)
+    (14) edge node [left] {} (15)
+    (15) edge node [left] {} (16);
+
+\end{tikzpicture}
+\end{center}
+\caption{DDG of a reverse operation}
+\label{fig:reverse_ddg}
+\end{figure}
+
+When we update a value in our input list, we have to re-execute the creation of the corresponding list element in the output list. Since this changes the modifiable which is now the head of the accumulator list, we also have to re-execute the next call, and so on. This causes a worst-case change propagation time of $O(n)$, even with constant sized updates. This DDG of such a function is shown in Figure \ref{fig:reverse_ddg}. The recursive reverse call is donated as $r$, with the element as first, and the head of the accumulator list $k_n$ as second parameter. The data dependencies between the reverse calls arise from the next-relation of the list elements and the allocated memory location for the accumulator list. 
+
+The solution for this problem is called \textit{Keyed Allocation}. When a modifiable is allocated using a key which has already been used for creating a modifiable before, the old memory location is re-used, resulting in an equal mod. In our reverse example, we would use the next element as key for allocating the accumulator. Since the resulting modifiable and therefore the head of the accumulator list will be the same as before change propagation, a memo match occours and the next call is not called by the change propagation algorithm. Using this approach, constant change propagation time is reached for constant sized updates. 
+
+\section{Programming Interface}
+
+As described in the previous section, the usage of a special memory model enables TBD to track read-write dependencies. When such a dependency is detected, however, the code which depends on the changed variable has to be identified and re-evaluated. This requires that the environment of the previous execution is still available. For many programming languages, this task is not straight-forward. Scala, however, supports the usage of \textit{Closures}. Closures are functions which are paired with their enclosing environment. This means that a closure can hold all information necassary to repeat a function valuation. Furthermore, closures can be treated and passed around like variables. Therfore, TBD adds a closure to each read, write or allocation call as additional parameter.
+
+%For each each allocation or read of a modifiable and each explicit memoization call, TBD requires a closure as additional argument. For memoization or allocation, the closure must not have any parameters. For an allocation, only code executed from within the closure may write to the allocated memory location. Memoization operations simply memoize the return value of the closure given as argument. A list of values which is passed to the memoization call is used to determine memo matches. 
+%For a read call, the closure has to accept a parameter, the value which has been read. Whenever the value which was read has changed and call has to be re-evaluated, the corresponding closure is re-executed with the new value as parameter.
+
+\subsection{API Functions provided by TBD} 
+
+Regarding TBD, modifiables are instances of the polymorph class $Mod[T]$, where $T$ is a type parameter which specifies the type of the object stored in the modifiable. TBD provides a range of functions to manipulate modifiables in a certain way to enable self-adjusting computation. These functions are provided by the static class $TBD$, and are available globally for TBD programs. The API is summarized in Figure \ref{??}. 
+
+[Todo: UML Here?]
+
+Mods are allocated by calling the $mod$ function. The $mod$ function requires accepts a closure without any parameters as first argument. The code contained in this closure is responsible for writing to the allocated memory location exactly once, by issuing a $write$ call. The write call must be the last operatione executed within the closure. Additionally, there is an overload of the $mod$ function, which accepts a key of any type as second parameter. This key is used to provide keyed allocation, as described in section \ref{sec:keyed_alloc}. Howerver same key might be used in different parts of the same application, for example when a list is first sorted and then reversed. This would break keyed allocation, since the program would overwrite memory which is allocated by another part of the programe. Therefore, it is possible to create a so called $Modizer$, an object which provides the same functionality as the $mod$ function, but only matches a key with the same memory location if the $Modizer$ instance is also the same. This means that a $Modizer$ can be used to add context to the keyed allocation. [Explain context in this context more.]
+
+To read a mod, the $read$ function has to be used. The $read$ function requires a modifiable as first parameter, and a closure as second paramter. The closure has to take a single parameter, the value of the mod which has been read. The value of the mod should be used by and is only valid within the closure. When the value of the modifiable changes, the closure is re-executed with the new value during change propagation. The last operation in the closure has to be a $write$ operation. Therefore, the only way a $read$ can produce a result 
+is to write it to a modifiable. The modifiable has to be allocated by a $mod$ instruction which contains the $read$ somewhere in its closure. 
+
+[Memo]
+
+[Par]
+
+\subsection{Programming patterns for TBD}
+
+\section{DDG format for TBD}
+
+\section{Example}
+
+
 
 %\section{Program interface}
 
-%\chapter{Calculating Trace Distance}
-%\label{ch:implementation}
+\chapter{Calculating Trace Distance}
+\label{ch:implementation}
 
-%\section{Node Tags}
+\section{Node Tags}
 
-%\section{Trace Distance}
+\section{Trace Distance}
+The main problem is that DDG nodes, which represent function calls, have to be compared for equality. The problem of comparing functions in general is, however, one of the unsolved problems of computer science. 
 
 %\chapter{Implementation}
 %\label{ch:impl}
