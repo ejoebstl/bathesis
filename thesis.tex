@@ -5,7 +5,14 @@
 % ----------------------------------------------------------------
 
 \usepackage{listings}
-\usetikzlibrary{arrows}
+\usetikzlibrary{trees,arrows,positioning, calc, shapes.geometric}
+% Node Styles
+\tikzstyle{root}=[draw,fill=gray,rectangle,minimum size=8pt,inner sep=0pt,label={0:root}]
+\tikzstyle{read}=[draw,fill=blue,circle,minimum size=8pt,inner sep=0pt,label={0:read}]
+\tikzstyle{mod}=[draw,fill=magenta,circle,minimum size=8pt,inner sep=0pt,label={0:mod}]
+\tikzstyle{memo}=[draw,fill=green!50,shape=diamond,minimum size=8pt,inner sep=0pt,label={0:memo}]
+\tikzstyle{write}=[draw,fill=orange,circle,minimum size=8pt,inner sep=0pt,label={0:write}]
+\tikzstyle{par}=[draw,fill=yellow,shape=diamond,minimum size=8pt,inner sep=0pt,label={0:par}]
 
 %% -------------------------------
 %% |  Information for PDF file   |

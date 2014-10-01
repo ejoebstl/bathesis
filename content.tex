@@ -518,25 +518,102 @@ As described in the previous section, the usage of a special memory model enable
 
 \subsection{API Functions provided by TBD} 
 
-Regarding TBD, modifiables are instances of the polymorph class $Mod[T]$, where $T$ is a type parameter which specifies the type of the object stored in the modifiable. TBD provides a range of functions to manipulate modifiables in a certain way to enable self-adjusting computation. These functions are provided by the static class $TBD$, and are available globally for TBD programs. The API is summarized in Figure \ref{??}. 
 
-[Todo: UML Here?]
+Public parts of the API important for this writing are summarized in \ref{fig:tbd_uml}. The classes $Function0$ and $Function1$ are included from the Scala API and represent closures. $Function0$ only has a return value of type $R$. $Function1$ has a return value of type $R$ and a single parameter of type $T1$. Moifiables are instances of the polymorph class $Mod[T]$, where $T$ is a type parameter which specifies the type of the object stored in the modifiable. The class $Changeable[T]$ has no public properties or methods - it is solely used for ensuring the last call in each closure is a $write$ call. TBD provides a range of functions to manipulate modifiables in a certain way to enable self-adjusting computation. These functions are provided by the static class $TBD$, and are available globally for TBD programs. 
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.7]{uml/TBD.pdf}
+\end{center}
+\caption{An UML class diagram for some parts of the TBD API}
+\label{fig:tbd_uml}
+\end{figure}
 
 Mods are allocated by calling the $mod$ function. The $mod$ function requires a closure without any parameters as first argument. The code contained in this closure is responsible for writing to the allocated memory location exactly once, by issuing a $write$ call. The write call must be the last operatione executed within the closure. Additionally, there is an overload of the $mod$ function, which accepts a key of any type as second parameter. This key is used to provide keyed allocation, as described in section \ref{sec:keyed_alloc}. 
 
 Using the same key in different parts of the programm would break keyed allocation, since the program would overwrite memory which is allocated by another part of the programm. This can happen, for example, if an input list is passed to two different functions and the list elements themselves are used as keys. Therefore, it is possible to create a so called $Modizer$, an object which provides the same functionality as the $mod$ function, but only matches a key if the $Modizer$ instance is also the same. This means that a $Modizer$ can be used to provide keyed allocation independently from other parts of the program. 
 
-To read a mod, the $read$ function has to be used. The $read$ function requires a modifiable as first parameter, and a closure as second paramter. The closure has to take a single parameter, the value of the mod which has been read. The value of the mod is only valid within the closure. When the value of the modifiable changes, the closure is re-executed with the new value during change propagation. The last operation in the closure has to be a $write$ operation. Therefore, the only way a $read$ operation can return a result is to write it to a modifiable using a $write$ instruction. The modifiable has to be allocated by a $mod$ instruction which contains the $read$ somewhere in its closure. 
+To read a mod, the $read$ function has to be used. The $read$ function requires a modifiable as first parameter, and a closure as second paramter. The closure has to take a single parameter, the value of the mod which has been read. The value of the mod is only valid within the closure. When the value of the modifiable changes, the closure is re-executed with the new value during change propagation. The last operation in the closure has to be a $write$ operation. This is enforced by requireing a return type of $Changeable[T]$. 
 
 TBD uses explizit memoization. This is done using a $memo$ operation. The first argument of the $memo$ operation is a list of objects which represent the state of the function to call. If this list equals for two calls, a memo match occours. The second parameter is the closure to memoize. As with $mod$, the $memo$ operation also supports independent memoization for certain parts of the application by creating an instance of the class $Memoizer$.
 
-Parallelism is also supported. The $par$ operator accepts two closures as arguments, which have to return a modifiable and are executed in parallel. This feature of TBD is not of importance for this writing.
+%Parallelism is also supported. The $par$ operator accepts two closures as arguments, which have to return a modifiable and are executed in parallel. This feature of TBD is not of importance for this writing.
 
-It should be noted that each the described calls requires another argument of the type $Context$, which holds information internally necassary for the operation of TBD. This argument is, however, marked as implicit. This means that the scala compiler automatically passes an available instance of $Context$ to the function, so the programmer does not have to worry about it.  
+It should be noted that each of the described calls requires another argument of the type $Context$, which holds information internally necassary for the operation of TBD. This argument is, however, marked as implicit. This means that the scala compiler automatically passes an available instance of $Context$ to the function, so the programmer does not have to worry about it.  
+
+Also, TBD also supports parallel execution and a range of helper methods, which are not outlined here. 
 
 \subsection{Programming patterns for TBD}
 
+As mentioned before, TBD enforces that the last call in each closure passed to $read$ or $mod$ has to be a $write$ call. This means that calls are usually nested, with a $mod$ call at the top, one or more $read$ calls benath, and a $write$ call at the bottom. Since a program might use more complex data structures, new modifiables may also be created inside the $read$ calls. However, those modifiables must be contained in the final result in some form. Depending on the architecture of the program, it might be possible to add a $memo$ call before a $mod$ call for memoization. Also, the closure-driven programming model does not support loops. Therefore TBD programs are usually recursive. 
+
+Figure \ref{code:add_example} shows the implementation basic function, which takes two numbers, adds them, and returns the result as modifiable. 
+
+The first line is a function declaration in Scala. The function's name is $add$, it accepts two parameters $aMod$ and $bMod$, both of type $Mod[Int]$ and returns a $Mod[Int]$. $Mod[Int]$ is a modifiable holding an integer. 
+
+The second line is responsible for memoization. In this case we check for memo matches using the input variables, $aMod$ and $bMod$. Note that we are able to pass a code block as closure to the function. This is a feature of the Scala language. Whenever no memo match occours, the $memo$ operation will call the passed closure. 
+
+The third line allocates a new modifiable using the $mod$ function. Inside the closure passed to the mod function, in line four, we read the first argument $aMod$. 
+
+In the fifth line, the read value is bound to a local variable using a $case$ statement from the Scala pattern matching engine. The reason we have to use pattern matching here is that it is impossible to introduce a variable without declaring it. Note that it would not have been sufficient to simply declare a local variable here, since TBD has to assign the variable a value from the outside of the Closure. The local variable $a$ is automatically inferred to be of type $Int$ by the compiler, the symbol $=>$ originates from the Scala syntax for $case$ statements. Also, we issue a read call, which reads the second parameter, $bMod$.
+
+In the sixth line, the read value of the second parameter is bound to the local variable $b$. A $write$ call which writes $a + b$ to the allocated mod is issued. The $write$ call automatically places the value in the last allocated modifiable. 
+
+When executing this program, each function executes the passed closure before returning. This means that the $mod$ call returns not until the $write$ operation has finished. 
+
+\begin{figure}
+\begin{lstlisting}[frame=single,basicstyle=\ttfamily]
+def add(aMod: Mod[Int], bMod: Mod[Int]): Mod[Int] = {
+  memo(aMod, bMod) {
+    mod {
+      read(aMod) {
+        case a => read(bMod) {
+          case b => write(a + b)
+        }
+      }
+    }
+  }
+}
+
+\end{lstlisting}
+\caption{A basic example of a function which adds two mods, utilizing $read$, $write$, and $mod$}
+\label{code:add_example}
+\end{figure}
+
 \section{DDG format for TBD}
+
+Since TBD does not perform memoization and re-evaluation on a function level, but rather by introducing specialized functions, we also introduce a new DDG, more specific DDG format for TBD. The DDG of a call to the $add$ function from listing \ref{code:add_example} with the input values one and three can be seen in \ref{fig:add_ddg}. The gray square represents the root node, from which our program is called. The green diamond node represents the memo call, the red circled node the mod node, the blue circled nodes the read nodes, and the orange circled node the write node. 
+
+The input and output of the program is not represented in this figure, data dependencies are also not explicitely marked. These details are intentionally omitted, since for complex functions, those graphs would get very complicated. The control dependencies, however, can clearly be seen. Control edges always go from top to bottom. The labels of each node represent the state of the corresponding call. All variables in the signature of the form $d.\alpha$ refer to mods, where $d.\alpha$ also denotes the id of the modifiable. All variables of the form $f.\beta$ refer to anonymous functions in the sourcecode, where for two variables with equal $\beta$, the same function has been called, although the arguments might have been different. Note that those DDGs are usually generated during execution of the program, and therefore also include specific details, like file and line number of the called function. However, this information is not useful through this writing.
+
+\begin{figure}
+\centering
+\begin{tikzpicture}[font=\sffamily,very thick,level/.style={sibling distance=30mm}]
+\tikzstyle{every node}=[font=\small]
+\node [root]{}
+child {
+  node [memo, label={350:(d.1, d.2, f.0)}]{}
+  child {
+    node [mod, label={350:(d.3,f.1)}]{}
+    child {
+      node [read, label={350:(d.1,f.2)}]{}
+      child {
+        node [read, label={350:(d.2,f.3)}]{}
+        child {
+          node [write, label={350:(3,d.4)}]{}
+        }
+      }
+    }
+  }
+};
+\end{tikzpicture}
+\caption{DDG of the simple $add$ function}
+\label{fig:add_ddg}
+\end{figure}
+
+In our example, it can be seen that the $memo$ call memoized two modifiables, with the id's $d.1$ and $d.2$. Those modifiables are our input mods. Then, the $memo$ call invoked an anonymous function $f.0$. The function $f.0$ refers to the function starting at line two in our example, in which a $mod$ call was executed. The $mod$ call then allocated a new modifiable with id $d.3$ and called the anonymous function $f.1$, starting in line three in our example. Inside this function, $d.1$ and $d.2$ were read by two consecutive $read$ calls. Finally, the innermost anonymous function, $f.3$, which refers to the function starting in line four, is executed. Inside this function call, the result, $3$, is written to the allocated modifiable $d.4$. 
+
+When observing the id's of the modifiables in $read$, $mod$ and $write$ executions closely, dependencies can be found. In this case, we have an allocate-write dependency between the $mod$ and the $write$ instruction, since we allocate a mod and then write to it. Also, it should be noted that the innermost function $f.3$ closes over the the variable introduced by the first $read$ instruction, and therefore binds it. This detail is of importance later. 
+
 
 \section{Example}
 
