@@ -25,10 +25,10 @@ A \textit{Dynamic Dependence Graph} (\textit{DDG}) is a directed, acyclic graph.
   \node[data node] (2) [right of=1] {2};
   \node[data node] (3) [right of=2] {3};
 
-  \node[call node] (4) [below of=0, ultra thick] {map(0)};
-  \node[call node] (5) [below of=1] {map(1)};
-  \node[call node] (6) [below of=2] {map(2)};
-  \node[call node] (7) [below of=3] {map(3)};
+  \node[call node] (4) [below of=0, ultra thick] {f(0)};
+  \node[call node] (5) [below of=1] {f(1)};
+  \node[call node] (6) [below of=2] {f(2)};
+  \node[call node] (7) [below of=3] {f(3)};
 
   \node[data node] (8) [below of=4] {0};
   \node[data node] (9) [below of=5] {2};
@@ -84,10 +84,10 @@ On an input change, the change propagation would now track all outgoing dependen
   \node[data node] (2) [right of=1] {2};
   \node[data node] (3) [right of=2] {3};
 
-  \node[call node] (4) [below of=0, ultra thick] {map(0)};
-  \node[call node] (5) [below of=1, style={draw=red}] {map(4)};
-  \node[call node] (6) [below of=2, style={draw=red}] {map(2)};
-  \node[call node] (7) [below of=3, style={draw=red}] {map(3)};
+  \node[call node] (4) [below of=0, ultra thick] {f(0)};
+  \node[call node] (5) [below of=1, style={draw=red}] {f(4)};
+  \node[call node] (6) [below of=2, style={draw=red}] {f(2)};
+  \node[call node] (7) [below of=3, style={draw=red}] {f(3)};
 
   \node[data node] (8) [below of=4] {0};
   \node[data node] (9) [below of=5, style={draw=red}] {8};
@@ -129,13 +129,13 @@ On an input change, the change propagation would now track all outgoing dependen
 \label{fig:map_change_ddg}
 \end{figure}
 
-Figure \ref{fig:map_change_ddg} shows the DDG of the simple map example after changing the second input value from $1$ to $4$. The highlighted edges have been traversed, and the highlighted nodes were therefore updated. It can be seen that the nodes $map(2)$ and $map(3)$ have been re-executed. The re-execution was not necessary, since the parameters and therefore the result of the function call were the same before change propagation. For a long list, this would lead to unnecessarily re-evaluating a lot of function calls. The outcome of such a behavior is linear time complexity in the worst case, even if only a single element has been updated. To circumvent this shortcoming, another technique is required: \textit{Memoization}.
+Figure \ref{fig:map_change_ddg} shows the DDG of the simple map example after changing the second input value from $1$ to $4$. The highlighted edges have been traversed, and the highlighted nodes were therefore updated. It can be seen that the nodes $f(2)$ and $f(3)$ have been re-executed. The re-execution was not necessary, since the parameters and therefore the result of the function call were the same before change propagation. For a long list, this would lead to unnecessarily re-evaluating a lot of function calls. The outcome of such a behavior is linear time complexity in the worst case, even if only a single element has been updated. To circumvent this shortcoming, another technique is required: \textit{Memoization}.
 
 \section{Memoization}
 
 \textit{Memoization}, or also called \textit{Function Caching} is the task of storing results of expensive computations. Basically, it is possible to remember the input parameters and the result for a given function. Then, the parameters of repetitive calls can be compared to the stored parameters. If the parameters match, the result can be re-used. Such a match is called \textit{memo match}.
 
-In combination with DDGs, this means that we can re-use whole subtrees of the DDG during change propagation. Figure \ref{fig:map_change_ddg_memo} illustrates the change propagation process using a \textit{memoized DDG}. Again, the change propagation algorithm re-evaluates functions dependent on the changed input. When the algorithm reaches the call to $map(2)$ however, the parameters of the call match the previous call. The algorithm therefore skips re-executing the call to $map(2)$ and re-uses the subtree. With this technique, the update of a constant number of elements finishes in constant time, for lists of any length. 
+In combination with DDGs, this means that we can re-use whole subtrees of the DDG during change propagation. Figure \ref{fig:map_change_ddg_memo} illustrates the change propagation process using a \textit{memoized DDG}. Again, the change propagation algorithm re-evaluates functions dependent on the changed input. When the algorithm reaches the call to $f(2)$ however, the parameters of the call match the previous call. The algorithm therefore skips re-executing the call to $f(2)$ and re-uses the subtree. With this technique, the update of a constant number of elements finishes in constant time, for lists of any length. 
 The memo match is highlighted in green. 
 
 %Simple Map DDG with change propagation
@@ -150,10 +150,10 @@ The memo match is highlighted in green.
   \node[data node] (2) [right of=1] {2};
   \node[data node] (3) [right of=2] {3};
 
-  \node[call node] (4) [below of=0, ultra thick] {map(0)};
-  \node[call node] (5) [below of=1, style={draw=red}] {map(4)};
-  \node[call node] (6) [below of=2, style={draw=green}] {map(2)};
-  \node[call node] (7) [below of=3] {map(3)};
+  \node[call node] (4) [below of=0, ultra thick] {f(0)};
+  \node[call node] (5) [below of=1, style={draw=red}] {f(4)};
+  \node[call node] (6) [below of=2, style={draw=green}] {f(2)};
+  \node[call node] (7) [below of=3] {f(3)};
 
   \node[data node] (8) [below of=4] {0};
   \node[data node] (9) [below of=5, style={draw=red}] {8};
@@ -396,19 +396,42 @@ It is possible to circumvent this drawback by using a slightly more complicated 
 
 It is important to note that all functions of programs written on top of TBD have to be side-effect free and deterministic. This means that no function is allowed to write global variables. Also, two function calls with the same arguments must produce the same outcome. If this is not respected by a program, change propagation will fail, since the corresponding dependencies can not be tracked. 
 
-\section{Modifiables}
+\section{Programming Interface}
+
+The usage of a special memory model enables TBD to track read-write dependencies. When such a dependency is detected, the code that depends on the changed variable has to be identified and re-evaluated. This requires that the environment of the previous execution is still available. For many programming languages, this task is not straight-forward. Scala, however, supports the usage of \textit{Closures}. Closures are functions that are paired with their enclosing environment. This means that a closure can hold all information necessary to repeat a function evaluation. Furthermore, closures can be treated and passed around like variables. TBD adds a closure to execute to each read, memo or allocation call as parameter. The corrsponding function calls the closure during execution. 
+
+TBD provides a broad set of API functions. Not all parts are important for this writing and therefore left out for clarity. The relevant parts are summarized in \ref{fig:tbd_uml}. The classes $Function0$ and $Function1$ are included from the Scala API and represent closures. $Function0$ only has a return value of type $R$. $Function1$ has a return value of type $R$ and a single parameter of type $T1$. The static class $TBD$ provides important functions for manipulating memory that will be described in depth during this section. Also, we will discuss how certain calls behave during change propagation, where relevant. 
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.7]{uml/TBD.pdf}
+\end{center}
+\caption{An UML class diagram for some parts of the TBD API}
+\label{fig:tbd_uml}
+\end{figure}
+
+
+\subsection{Memory Model}
 
 %[Maybe move this chapter to Self-Adjusting computing]
 
-For accomplishing self-adjusting computation, it is necessary to detect when a memory location is read or written. With a classic machine model featuring random access memory, reads and writes can be hard to track. Furthermore, high-level languages like Scala usually do not provide primitive data types to reference memory locations. Therefore, all variables that need to be tracked are wrapped into so called \textit{Modifiables}, which are typed references to some storage location. Each modifiable has a unique identifier that can be used to reference the modifiable through the program. All modifiables have to be explicitly allocated, read and written by calling corresponding functions. It is therefore possible to recognize dependencies between allocations, writes and reads of a modifiable. 
+For accomplishing self-adjusting computation, it is necessary to detect when a memory location is read or written. With a classic machine model featuring random access memory, reads and writes can be hard to track. Furthermore, high-level languages like Scala usually do not provide primitive data types to reference memory locations. Therefore, all variables that need to be tracked are wrapped into so called \textit{Modifiables} or short \textit{Mods}, which are typed references to some storage location. Each mod has a unique identifier that can be used to reference the modifiable through the program. All mods have to be explicitly allocated, read and written by calling corresponding functions. It is therefore possible to recognize dependencies between allocations, writes and reads of a mods.
 
-\subsection{Keyed Allocation}
+A mod is represented by an instance of the class $Mod[T]$, where $T$ specifies the type of the object stored into the modifiable. Besides the $id$, a mod has no public functions or parameters. A mod can, however, be manipulated by certain functions of TBD.
+
+\subsection{Allocation and Writing of Modifiables}
+\label{sec:allocation}
+
+Mods are allocated by calling the $mod[T]$ function. $T$ denotes the type of the created mod. The $mod$ function requires a closure without any parameters as first argument. The code contained in this closure is responsible for writing to the allocated memory location exactly once, by issuing a single $write[T]$ call of the same type $T$. After the $mod$ function executes the closure, an instance of $Mod[T]$ is returned, which references the value which has been written inside the closure. The write call has a single parameter of type $T$, the value which has to be stored in the mod.
+
+The write call must be the last operation executed within the closure. This is enforced by requireing a return type of $Changeable[T]$ from the closure. The class $Changeable[T]$ can only be instantiated by the $write[T]$ function. Since Scala automatically returns the result of the last operation in a function call as result for that function, this type constraint is satisfied by placing the $write[T]$ at the end of the function. Of course there are ways to circumvent this constraint, for example by issuing a write call and remembering the resulting $Changeable[T]$ for later return, with other operations after the write call. While this is possible and also might produce a working program, such an approach will break self-adjusting computation in most cases and should therefore be avoided. In general, TBD programs should not make use of the $return$ keyword to explecitly return values. 
+
+\subsubsection{Keyed Allocation of Modifiables}
 \label{sec:keyed_alloc}
 
-In general the allocation of a modifiable creates a new modifiable with a new, unique id. If we, however, use this modifiable as a parameter to another call in our program, we have to replace the reference to the old modifiable by the reference to the new modifiable through the program during change propagation. For recursive methods, this can cause a lot of updates, since we have to update all methods that pass the modifiable along. Also, re-executing more methods might re-create more modifiables, causing chain reactions. 
-Since reads and writes to modifiables can be tracked, this behavior is unnecessary: The change propagation mechanism would be capable of updating the calculation where possible, but only if the mod is not re-created. 
+When a modifiable is allocated, an additional parameter might be passed as key. When using a key that has already been used for creating a modifiable before, the old memory location is re-used, resulting in a modifiable with an equal id. This is called \textit{Keyed Allocation}. Keyed allocation is provided by an overloaded version of the $mod[T]$ function, which accepts a key of any type as second parameter. This feature is needed during change propagation, in case $mod$ calls get re-executed. 
 
-To illustrate this problem, consider a simple recursive list reverse operation. This operation takes an input list $A = (a_1, ..., a_n)$ and creates the reversed output list $A_r = (a_n, ..., a_1)$. When we implement such an operation recursively, we usually read the list from front to end and prepend each element to an accumulator list that holds the reversed list $A'$ in the end. Whenever we prepend an element to the accumulator list we have to create a new modifiable to hold the new list element. This list element serves as the head $k_i$ of the accumulator list for the next step. Since we have to pass the accumulator list to the next recursive call, we have no choice but to memoize against the element $k_i$.
+Note that the need for keyed allocation is not obvious. Self-adjusting computation does not rely on keyed allocation in general, it is merely introduced by the recursive, closure-driven design of TBD. To illustrate the need for this feature, consider a simple recursive list reverse operation. This operation takes an input list $A = (a_1, ..., a_n)$ and creates the reversed output list $A_r = (a_n, ..., a_1)$. When we implement such an operation recursively, we usually read the list from front to end and prepend each element to an accumulator list that holds the reversed list $A'$ in the end. Whenever we prepend an element to the accumulator list we have to create a new modifiable to hold the new list element. This list element serves as the head $k_i$ of the accumulator list for the next step. The DDG of such a function is shown in Figure \ref{fig:reverse_ddg}. The recursive reverse call is denoted as $r$, with the element as first, and the head of the accumulator list $k_n$ as second parameter. The data dependencies between the calls arise from the next-relation of the list elements and the allocated memory location for the accumulator list. 
 
 %Reverse DDG
 \begin{figure}
@@ -506,42 +529,54 @@ To illustrate this problem, consider a simple recursive list reverse operation. 
 \label{fig:reverse_ddg}
 \end{figure}
 
-When we update a value in our input list, we have to re-execute the creation of the corresponding list element of the output list. Since this changes the modifiable which is now the head of the accumulator list, we also have to re-execute the next call, and so on. This causes a worst-case change propagation time of $O(n)$, even with constant sized updates. This DDG of such a function is shown in Figure \ref{fig:reverse_ddg}. The recursive reverse call is denoted as $r$, with the element as first, and the head of the accumulator list $k_n$ as second parameter. The data dependencies between the reverse calls arise from the next-relation of the list elements and the allocated memory location for the accumulator list. 
+If we now want to support efficient change propagation, we have to memoize each recursive call. Each call is not only dependent on the corresponding element of the input list, but also on the head of the allocator list, which will be the next successor of the newly created list element. Therefore, we have to memoize against the input element and the head of the accumulator list. 
 
-The solution for this problem is called \textit{Keyed Allocation}. When a modifiable is allocated using a key that has already been used for creating a modifiable before, the old memory location is re-used, resulting in a modifiable with an equal id. In our reverse example, we would use the next element as key for allocating the head of the accumulator list. Since the resulting modifiable and therefore the head of the accumulator list will be the same as before change propagation, a memo match occurs and the next call is not re-executed by the change propagation algorithm. Using this approach, constant change propagation time is reached for constant sized updates. 
+When a value in the input list is updated, the corresponding call will be re-executed. Since this also re-creates the modifiable which is the new head of the accumulator list, memoization fails. Therefore, we also have to re-execute the next call, and so on. This causes a worst-case change propagation time of $O(n)$, even with constant sized updates. 
 
-\section{Programming Interface}
+To circumvent this shortcoming, we can use the next element as key for allocating the head of the accumulator list. Since the resulting modifiable and therefore the head of the accumulator list will be the same as before change propagation, a memo match occurs and the next call is not re-executed by the change propagation algorithm. Using this approach, constant change propagation time is reached for constant sized updates in this example. 
 
-As described in the previous section, the usage of a special memory model enables TBD to track read-write dependencies. When such a dependency is detected, the code that depends on the changed variable has to be identified and re-evaluated. This requires that the environment of the previous execution is still available. For many programming languages, this task is not straight-forward. Scala, however, supports the usage of \textit{Closures}. Closures are functions that are paired with their enclosing environment. This means that a closure can hold all information necessary to repeat a function evaluation. Furthermore, closures can be treated and passed around like variables. TBD adds a closure to execute to each read, write or allocation call as parameter.
+Note that this problem only occours in a program that passes mods to function calls which are memoized. The map or reduce implementations can benefit from change propagation without keyed allocation.  
 
-\subsection{API Functions provided by TBD} 
+\subsubsection{Context-Sensitivie Keyed Allocation of Modifiables}
 
-TBD provides a broad set of API functions. Not all parts are important for this writing and therefore left out for clarity. The relevant parts are summarized in \ref{fig:tbd_uml}. The classes $Function0$ and $Function1$ are included from the Scala API and represent closures. $Function0$ only has a return value of type $R$. $Function1$ has a return value of type $R$ and a single parameter of type $T1$. Modifiables are instances of the polymorph class $Mod[T]$, where $T$ is a type parameter that specifies the type of the object stored in the modifiable. The class $Changeable[T]$ has no public properties or methods - it is solely used for ensuring the last call in each closure is a $write$ call. TBD provides a range of functions to manipulate modifiables in a certain way to enable self-adjusting computation. These functions are provided by the static class $TBD$, and are available globally for TBD programs. 
-\begin{figure}
-\begin{center}
-\includegraphics[scale=0.7]{uml/TBD.pdf}
-\end{center}
-\caption{An UML class diagram for some parts of the TBD API}
-\label{fig:tbd_uml}
-\end{figure}
+As mentioned, any object can be used as a key for the allocation. In the last example, we used each input element of the list as key for the modifiable which holds the corresponding output element. However, there might exist more than one function in a program which follows this approach, especially, when frameworks are used. In a case where the same input list is passed to two such function calls, one of the functions would re-write memory locations the other function has allocated. To avoid this situation, the $Modizer$ class was introduced. Instances of the $Modizer$ class provide a public $apply$ method, with the same signature and functionality as the keyed $mod$ function. However, the key comparison only takes place for all calls to the $apply$ method of the same instance. For two different instances of $Modizer$, identic calls to the $apply$ method would still lead to the creation of two different mods. By passing a $Modizer$ instance to a function call, it is therefore possible to isolate the process of keyed allocation from other parts of the program. 
 
-Mods are allocated by calling the $mod$ function. The $mod$ function requires a closure without any parameters as first argument. The code contained in this closure is responsible for writing to the allocated memory location exactly once, by issuing a $write$ call. The write call must be the last operation executed within the closure. Additionally, there is an overload of the $mod$ function that accepts a key of any type as second parameter. This key is used to provide keyed allocation, as described in section \ref{sec:keyed_alloc}. 
+Due to a feature of the Scala-language, it is possible to call the $apply$ method on an instance without specifying the method name. That means that for a $Modizer$ instance with name $modizer$, the $apply$ method can be called by using $modizer.apply(...)$ or $modizer(...)$ with the same outcome. 
 
-Using the same key in different parts of the program would break keyed allocation, since the program would overwrite memory that is allocated by another part of the program. This can happen, for example, if an input list is passed to two different functions and the list elements themselves are used as keys. Therefore, it is possible to create a so called $Modizer$, an object that provides the same functionality as the $mod$ function, but only matches a key if the $Modizer$ instance is also the same. This means that a $Modizer$ can be used to provide keyed allocation independently from other parts of the program. 
+\subsection{Reading of Modifiables}
 
-To read a mod, the $read$ function has to be used. The $read$ function requires a modifiable as first parameter, and a closure as second parameter. The closure has to take a single parameter, the value of the mod that has been read. The value of the mod is only valid within the closure. When the value of the modifiable changes, the closure is re-executed with the new value during change propagation. 
+To read a mod, the $read[U]$ function has to be used. The $read[U]$ function requires an instance of $Mod[U]$ as first parameter, and a closure as second parameter. The closure has to take a single parameter of type $U$, the value of the mod that has been read. The return type of the closure has to be $Changeable[T]$, and the $read[U]$ call also returns an instance of $Changeable[T]$. A call to $write[T]$ must be the last call within the passed closure and the $read[U]$ call has to be placed inside the closure of a $mod[T]$ call. In other words, it is possible to nest any numbers of reads between an allocation and the corresponding write. 
+ 
+When the $read[T]$ function is called, it invokes the closure and passes the value of the mod which has been read as parameter to the closure. The passed value is only valid within that closure and must not be assigned to any variable outside the closure. 
 
-The $write$ operation takes a single parameter, the value to write to a previously allocated modifiable. The last operation in each closure passed to a $read$ or $mod$ call has to be a $write$ operation. This is enforced by requiring a return type of $Changeable[T]$ from the closure. Objects of type $Changeable[T]$ can only be instantiated by the $write$ call. 
+\subsubsection{Updating Reads during Change Propagation}
 
-TBD uses explicit memoization. This is done using a $memo$ operation. The first argument of the $memo$ operation is a list of objects that represent the state of the function to call. If this list equals for two calls, a memo match occurs. The second parameter is the closure to memoize. As with $mod$, the $memo$ operation also supports independent memoization for certain parts of the application by creating an instance of the class $Memoizer$.
+If the value of a modifiable is updated from outside the program, the change propagation algorithm finds alls $read$ calls that read the changed modifiable. Then, the closure passed to the $read$ call is invoked with the new value of the modifiable as parameter. The $read$ call itself is not re-executed. If multiple modifiables are updated, the $read$ calls are updated in topological order. Also, modifiables which are re-written during change propagation might be read somewhere else in the program, causing further needs for updates. Therefore, change propagation can cause cascading updates.
 
-%Parallelism is also supported. The $par$ operator accepts two closures as arguments, which have to return a modifiable and are executed in parallel. This feature of TBD is not of importance for this writing.
+In other words, $read$ calls are used to identify parts of the propram which have to be updated during change propagation. 
 
-It should be noted that each of the described calls requires another argument of the type $Context$, which holds information internally necessary for the operation of TBD. This argument is, however, marked as implicit. This means that the Scala compiler automatically passes an available instance of $Context$ to the function, so the programmer does not have to worry about it.  
+\subsection{Memoization}
+
+TBD uses explicit memoization. This is done using a $memo$ operation. The first argument of the $memo$ operation is a list of objects that represent the state of the function to call. In the general case, this equals the argument list which is bound to the closure. The second parameter is the closure to memoize. 
+
+When the $memo$ operation is called, and has not been called with the same argument list before, the closure is executed and the result of the closure is returned by the $memo$ call. Additionally, the result of the closure for the given argument list is stored. If the $memo$ operation is now called again with the same argument list, the stored result is returned without re-executing the closure. This occourence is called \textit{memo match}. It is important to remember that the closure itself is not a part of the argument list. 
+
+\subsubsection{Memoization and Change Propagation}
+Memo matches are designed for and happen during change propagation. If a $memo$ call is re-executed and a memo-match occours, re-execution is halted at that point, since the closure of the $memo$ call will not be invoked. It is important to realize that without correct $memo$ calls, each update potentially re-executes the whole program: Updating the first read of the program would re-execute the corresponding clause which recursively calls the whole program again. 
+
+In other words, $memo$ calls are used to stop a running change propagation from re-evaluating program parts where it is no longer necassary. 
+
+\subsubsection{Context-Sensitive Memoization}
+
+The problem outlined in section \ref{sec:keyed_alloc} also exists with memoization. Two distinct functions might memoize against the same arguments. In this case, memo matches would occour despite the closure is a different one. To solve this problem, an instance of the $Memoizer$ class can be passed to each function call. $Memoizer$ provides an $apply$ method with the same signature and functionality as the $memo$ function. Memo-matches are only checked for calls to the same instance. That means that for two different instances of the $Memoizer$ function, identical calls can return different results. 
+
+\subsection{Remarks} 
+
+It should be noted that each of the described calls requires another argument of the type $Context$, which holds information internally necessary for the operation of TBD. This argument is, however, marked as \textit{implicit}. This means that the Scala compiler automatically passes an available instance of $Context$ to the function, so the programmer does not have to worry about it.  
 
 Also, TBD supports parallel execution and a range of helper methods that are not outlined here. 
 
-\subsection{Programming patterns for TBD}
+\section{Programming patterns for TBD}
 
 As mentioned before, TBD enforces that the last call in each closure passed to $read$ or $mod$ is a $write$ call. This means that calls are usually nested, with a $mod$ call at the top, one or more $read$ calls beneath, and a $write$ call at the bottom. Since a program might use more complex data structures, new modifiables may also be created inside the $read$ calls. However, those modifiables must be contained in the final result in some form. Depending on the architecture of the program, it might be possible to add a $memo$ call before a $mod$ call for memoization. Also, the closure-driven programming model does not support loops. Therefore TBD programs are usually recursive. 
 
