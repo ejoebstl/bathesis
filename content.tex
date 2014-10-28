@@ -322,7 +322,7 @@ Calculating trace distance is simple: For two executions $(E, F)$, all nodes of 
 
 If we consult our simple map example with two executions that only differ in one input element, the trace distance will be exactly one, since only a single node will be re-evaluated. This is also illustrated in Figure \ref{fig:map_change_ddg_memo}.
 
-It is important to realize that trace distance can be independent of memoization. The reason for this is that function calls that are not memoized can still be equal, due to having equal function arguments. Therefore, the memoized and unmemoized versions of map have equal trace distance for each pair of executions, even though change propagation times differ heavily.    
+It is important to realize that trace distance can be independent of memoization. The reason for this is that function calls that are not memoized can still be equal, due to having equal function arguments. Therefore, the memoized and unmemoized versions of map have equal trace distance for each pair of executions, even though change propagation times differ heavily.
 
 
 %[Todo: Maybe two small graphs here, with diffs highlighted.]
@@ -645,7 +645,7 @@ When executing this program, each function executes the corresponding closure be
 
 If an input value of this function changes, TBD will take care to re-evaluate the corresponding $read$ call. The $read$ call invokes its respective closure again. All function calls in the closure will be executed. Finally, the write will be re-executed and the result will be updated. If the $add$ function is called by another function during change propagation, the $memo$ call checks for memo matches and halts change propagation if the function is called with the same parameters as before. 
 
-\subsubsection{Map: A more complex example}
+\subsection{Map: A more complex example}
 
 To wrap up this section, we revisit the map example introduced in section \ref{sec:simple_example} and theoretically discussed in section \ref{sec:ddg}. Since the map operator operates on lists, we define a list element class, $SimpleList$, that is shown in \ref{fig:simple_list_uml}. The $SimpleList$ class represents a single list element. Each instance has a member that points to the next element of the list, and a member that holds the value. Like the member $next$, the head of a list is represented by an instance of $Mod[SimpleListElement[T]]$. The last element in the list is represented by a modifiable that holds a null reference.  
 
@@ -692,25 +692,59 @@ We now use the Scala pattern matching engine to handle two different cases. The 
 
 If the current element is null, we reached the end of the list, and we write the final element of our output list in line nine. If the current element is not null, we write a new list element in line thirteen. The value of the new list element is the result of the call to the $mapper$ function with the value of the input element as value in line eleven. The next element of the new element is the result of a recursive application of the $map$ function to the successor of this element in line twelve. 
 
-We will discuss change propagation for this code in the next section. 
+If an input value is updated, the corresponding $read$ call is re-evaluated, and therefore the closure starting at line eight gets re-executed. This also re-executes the call to $mapper$ and the recursive call to $map$ for the next element. If the next element was not modified, a memo match occours and change propagation halts for this specific branch and the recursive $map$ call returns. Then, the $write$ call is re-executed with the updated result. 
 
-\section{DDG format for TBD}
+\section{DDGs for TBD}
+\label{sec:tbd_ddgs}
 
-DDGs are fundamental for calculating trace distance. However, TBD does not perform change propagation on a level of program functions, but rather by re-evaluating closures that are passed to $read$, $write$, $memo$ and $mod$. Therefore, we introduce a new, more specific DDG format for TBD. An example can be seen in figure \ref{fig:add_ddg}, which will be discussed later in detail. The new DDG format introduces nodes for $read$, $mod$, $memo$ and $write$ operations. For simplicity, we will refer to those nodes as mod, memo, read or write nodes. The type of each node is explicitly annotated and prepended with the node id in the figure. 
+DDGs are fundamental for calculating trace distance. However, TBD does not perform change propagation on a level of program functions, but rather by re-evaluating closures that are passed to $read$, $write$, $memo$ and $mod$. Therefore, we introduce a new, more specific DDG format for TBD. The new DDG format introduces nodes for $read$, $mod$, $memo$ and $write$ operations. 
 
-The basic state of the function call is annotated below the node id and type. Note that the state, while very similar, does not equal the function signature. All variables in the call state that are of the form $d.\alpha$ refer to mods, where $\alpha$ refers to the id of the modifiable. All variables of the form $f.\beta$ refer to closures in the source code, where for two variables with equal $\beta$, the same function has been called, although the arguments might have been different. We use numeric names because our closures are anonymous and do not have names. 
+Each node in the DDG has to hold enough information to re-evaluate the corresponding call. Since we have to compare DDG nodes for calculating trace distance, all data has to be available in comparable form, including closures. We therefore introduce the following representations: 
 
-Memo nodes have any number of values in their label. The last value corresponds to the closure called by the $memo$ function. All other values correspond to the argument list for memoization. 
+\begin{itemize}
 
-Mod nodes have two values in their label. The first one corresponds to the allocated mod, the second one to the closure being called. 
+\item A \textit{Function Tag} is a data structure that represents a closure in a compact way. A function tag consists of a unique function id that identifies the closure and a list of free variables inside the function that are bound from an outer scope, including the name and the value of the variable. 
 
-Read nodes have three values in their label. The first one corresponds to the mod being read, the second one to the value of the read mod, and the third one to the closure being called.
+\item Each node has an unique node id and a node type, either $read$, $write$, $memo$, $mod$ or $root$. Whenever a new node is created, for example during re-evaluation, a new id is generated for the new node.
 
-Write nodes have two values in their label. The first one is the value being written, the second one the mod the value is written to. 
+\item A read node contains the modifiable and value that has been read and a function tag that represents the closure that was called by the $read$ function. 
 
-The input and output of the program are not represented in this format, data dependencies are also not explicitly marked. These details are intentionally omitted, since for complex functions, those graphs would get unclear. The control dependencies, however, can clearly be seen. Control edges always go from top to bottom. 
+\item A write node contains the value written and the id of the mod written to. 
 
-It should be noted that there are more important properties for each DDG node, which are also used later during this writing. For this visualization, however, the basic state of the call is sufficient. 
+\item A memo node contains the list of arguments used to check for memo matches and a function tag that identifies the closure that was called by the $memo$ function. 
+
+\item A mod node contains the mod created and a function tag representing the closure called by the $mod$ function.
+
+\item A root node has no properties. However, a root node might have multiple child nodes. 
+
+\end{itemize}
+
+Those properties, except the id, completely define the state of the called function. With the information available for a node, we can re-execute the corresponding call. Also, for two nodes with equal properties, the corresponding call will execute equally. Child nodes, and therefore subcalls, might execute differently.
+
+The edges of the DDG represent control dependencies. Therefore, the DDG resembles the call tree of a program execution, with the root node as root of the tree. Other dependencies, like data dependencies or allocate-write dependencies, are not explicitely given, but can be inferred from the node properties. Since each node holds the state of the corrsponding function call, the DDG holds all information necassary to reconstruct the whole execution of the program. 
+
+\subsection{Visualization of DDGs}
+
+Since the DDGs of TBD programs are important through this writing, we define a visualization format for those DDGs. An example can be seen in figure \ref{fig:add_ddg}. This specific DDG will be discussed later in detail. The type of each node is explicitly annotated and prepended with the node id in the figure. 
+
+An excerpt of the node properties of the function call is annotated below the node id and type. Note that this annotation does not contain all properties of the node. Also, this annotation, while very similar, does not correspond to the signature of the function call. 
+
+All variables in the annotation that are of the form $d.\alpha$ refer to mods, where $\alpha$ refers to the id of the modifiable. All variables of the form $f.\beta$ refer to closures in the source code, where for two variables with equal $\beta$, the same function has been called, although the arguments might have been different. We use numeric names because our closures are anonymous and do not have names. 
+
+The specific annotations for each node type are the following:
+\begin{itemize}
+\item Memo nodes have any number of values in their annotation. The last value corresponds to the closure called by the $memo$ function. All other values correspond to the argument list used to check for memo matches. 
+
+\item Mod nodes have two values in their annotation. The first one corresponds to the allocated mod, the second one to the closure being called. 
+
+\item Read nodes have three values in their annotation. The first one corresponds to the mod being read, the second one to the value of the read mod, and the third one to the closure being called.
+
+\item Write nodes have two values in their annotation. The first one is the value being written, the second one the mod the value is written to. 
+\end{itemize}
+
+While those annotations do not completely identify each node, they are sufficient for understanding what node corresponds to which part of the program. Further details will be pointed out where applicable.   
+
+Also, the input and output of the program are not represented in this format, data dependencies are also not explicitly marked. These details are intentionally omitted, since for complex functions, those graphs would get unclear. The control dependencies, however, can clearly be seen. Control edges always go from top to bottom. 
 
 \subsection{DDG of Add}
 
@@ -754,38 +788,38 @@ When observing the ids of the modifiables in $read$, $mod$ and $write$ execution
 %a 3 2
 %a 4 3
 %p
-%T################################ TODO: Explain Key/Value Pairs! Can explain as list index. 
+
 \begin{figure}
 \centering
 \begin{tikzpicture}[font=\sffamily,very thick,level/.style={sibling distance=40mm}]
 \tikzstyle{every node}=[font=\small]
 \node [root, label={0:1.root}, label={350:}]{}
 child {
-  node (2)[memo, label={0:2.memo}, label={350:(f.23, 1, Mod(d.0))}]{}
+  node (2)[memo, label={0:2.memo}, label={350:(1, d.0, f.23)}]{}
   child {
     node (3)[mod, label={0:3.mod}, label={350:(d.2, f.22)}]{}
     child {
-      node (4)[read, label={0:4.read}, label={350:(d.0, (1,71), f.21)}]{}
+      node (4)[read, label={0:4.read}, label={350:(d.0, 0, f.21)}]{}
       child {
-        node (10)[memo, label={0:10.memo}, label={350:(f.23, 1, Mod(d.1))}]{}
+        node (10)[memo, label={0:10.memo}, label={350:(1, d.1, f.23)}]{}
         child {
           node (11)[mod, label={0:11.mod}, label={350:(d.7, f.22)}]{}
           child {
-            node (12)[read, label={0:12.read}, label={350:(d.1, (2,1), f.21)}]{}
+            node (12)[read, label={0:12.read}, label={350:(d.1, 1, f.21)}]{}
             child {
-              node (13)[memo, label={0:13.memo}, label={350:(f.23, 1, Mod(d.4))}]{}
+              node (13)[memo, label={0:13.memo}, label={350:(1, d.4, f.23}]{}
               child {
                 node (14)[mod, label={0:14.mod}, label={350:(d.8, f.22)}]{}
                 child {
-                  node (15)[read, label={0:15.read}, label={350:(d.4, (3,2), f.21)}]{}
+                  node (15)[read, label={0:15.read}, label={350:(d.4, 2, f.21)}]{}
                   child {
-                    node (16)[memo, label={0:16.memo}, label={350:(f.23, 1, Mod(d.5))}]{}
+                    node (16)[memo, label={0:16.memo}, label={350:(1, d.5, f.23)}]{}
                     child {
                       node (17)[mod, label={0:17.mod}, label={350:(d.9, f.22)}]{}
                       child {
-                        node (18)[read, label={0:18.read}, label={350:(d.5, (4,3), f.21)}]{}
+                        node (18)[read, label={0:18.read}, label={350:(d.5, 3, f.21)}]{}
                         child {
-                          node (19)[memo, label={0:19.memo}, label={350:(f.23, 1, Mod(d.6))}]{}
+                          node (19)[memo, label={0:19.memo}, label={350:(1, d.6, f.23)}]{}
                           child {
                             node (20)[mod, label={0:20.mod}, label={350:(d.10, f.22)}]{}
                             child {
@@ -797,25 +831,25 @@ child {
                           }
                         }
                         child {
-                          node (23)[write, label={0:23.write}, label={350:(d.9, (4,6))}]{}
+                          node (23)[write, label={0:23.write}, label={350:(d.9, 6)}]{}
                         }
                       }
                     }
                   }
                   child {
-                    node (24)[write, label={0:24.write}, label={350:(d.8, (3,4))}]{}
+                    node (24)[write, label={0:24.write}, label={350:(d.8, 4)}]{}
                   }
                 }
               }
             }
             child {
-              node (25)[write, label={0:25.write}, label={350:(d.7, (2,2))}]{}
+              node (25)[write, label={0:25.write}, label={350:(d.7, 2)}]{}
             }
           }
         }
       }
       child {
-        node (26)[write, label={0:26.write}, label={350:(d.2, (1,0))}]{}
+        node (26)[write, label={0:26.write}, label={350:(d.2, 0)}]{}
       }
     }
   }
@@ -833,13 +867,13 @@ child {
 \end{figure}
 
 
-Figure \ref{fig:map_tbd_ddg} shows the DDG of a call of the map function with the input list $(0, 1, 2, 3)$. Regarding the basic structure, the DDG is identical to the DDG in figure \ref{fig:map_ddg}. The node sets $\{2, 3, 4, 26\}$, $\{10, 11, 12, 25\}$, $\{13, 14, 15, 24\}$ and $\{15, 17, 18, 23\}$ correspond to a single call of the map function from figure \ref{fig:map_ddg} each. The nodes $\{19, 20, 21, 22\}$ represent writing the end of the list, which can be recognized by reading a $null$ element and then writing $null$. 
+Figure \ref{fig:map_tbd_ddg} shows the DDG of a call of the map function with the input list $(0, 1, 2, 3)$ and a mapping function that multiplies each element by two. Regarding the basic structure, the DDG is similar to the DDG in figure \ref{fig:map_ddg}. The node sets $\{2, 3, 4, 26\}$, $\{10, 11, 12, 25\}$, $\{13, 14, 15, 24\}$ and $\{15, 17, 18, 23\}$ correspond to a single call of the map function from figure \ref{fig:map_ddg} each. The nodes $\{19, 20, 21, 22\}$ represent writing the end of the list, which can be recognized by reading a $null$ element and then writing $null$. 
 
-Each of those sets also corresponds to a single recursive call of the map function described in listing \ref{code:map_example}.The node sets that correspond to a single recursive call of the $map$ function can be identified by consulting the function ids inside the signatures. For instance, the memo node at the beginning of each call invokes the closure $f.23$. All sets are highlighted in figure \ref{fig:map_tbd_ddg}.
+Each of those sets corresponds to a single recursive call of the $map$ function described in listing \ref{code:map_example}. Those sets can be identified by consulting the function ids inside the signatures. For instance, the memo node at the beginning of each call invokes the closure $f.23$, corresponding to the closure passed to the memo call in listing \ref{code:map_example}. All sets those are highlighted in figure \ref{fig:map_tbd_ddg}.
 
-For each call, the DDG is similar. We can see that a memo call happened, with a mod and the number $1$ as argument list. The number $1$ originates from the memoizer and is internally used to match a stored memoization entry with its memoizer. The mod in the argument list corresponds with the input element that is currently being mapped. After the memo, the a new mod was allocated. Then, the input element was read and the same function was called recursively for the next element. After the recursion finished, the result was written to the previously allocated mod. We can recognize that because the mod ids of the allocation and the write call match. 
+For each recursive call, the corresponding part of the DDG is similar. We can see that a memo call happened, with a mod and the number $1$ in the argument list. The number $1$ originates from the memoizer and is internally used to match a stored memoization entry with its memoizer. The mod in the argument list corresponds to the input element that is currently being mapped. After the memo call, a new mod was allocated. Then, the input element was read and the same function was called recursively for the next element. After the recursion finished, the result was written to the previously allocated mod. We can recognize this dependency because the mod ids of the allocation and the write call match. 
 
-Figure \ref{fig:map_tbd_ddg_change} shows the DDG after the second value in the input was updated to four. This is the same operation as conducted in the example in \ref{sec:ddg}, an update of the second element of the input list. During change propagation, TBD re-evaluated the closure passed to node $12$, a read node. Inside the closure, the mapping function was re-executed. The nodes $13$ and $27$ are direct descendants of node $12$. Node $13$ is a memo node that memoizes against the successor of the changed element. Since the successor was not modified, a memo match occurs and the change propagation stops for this branch. Node $27$ is a write call that got re-executed. The new result, eight, was written to the modifiable. The two nodes that were involved in the update are highlighted in figure \ref{fig:map_tbd_ddg_change}. It is important to realize that node $12$ was not replaced in the DDG, since only the corresponding closure was re-executed. Also, no modifiables were newly allocated. The only change was the update of a single output value. 
+Figure \ref{fig:map_tbd_ddg_change} shows the DDG after the second value in the input was updated to four. This is the same operation as conducted in the example in \ref{sec:ddg}, an update of the second element of the input list. During change propagation, TBD re-evaluated the closure passed to the read node $12$, that read the updated value. Inside the closure, the mapping function was re-executed. The nodes $13$ and $27$ are direct descendants of node $12$. Node $13$ is a memo node that memoizes against the successor of the changed element. Since the successor was not modified, a memo match occurs and the change propagation stops for this branch. Node $27$ is a write call that got re-executed. The new result, eight, was written to the modifiable. The two nodes that were involved in the update are highlighted in figure \ref{fig:map_tbd_ddg_change}. It is important to realize that node $12$ was not replaced in the DDG, since only the corresponding closure was re-executed. Also, no modifiables were newly allocated. The only change was the update of a single output value. 
 
 %generated using: 
 %bin/visualization.sh -a smmap -t manual -i 1  
@@ -856,31 +890,31 @@ Figure \ref{fig:map_tbd_ddg_change} shows the DDG after the second value in the 
 \tikzstyle{every node}=[font=\small]
 \node (1)[root, label={0:1.root}, label={350:}]{}
 child {
-  node (2)[memo, label={0:2.memo}, label={350:(f.23, 1, Mod(d.0))}]{}
+  node (2)[memo, label={0:2.memo}, label={350:(1, d.0, f.23)}]{}
   child {
     node (3)[mod, label={0:3.mod}, label={350:(d.2, f.22)}]{}
     child {
-      node (4)[read, label={0:4.read}, label={350:(d.0, (1,63), f.21)}]{}
+      node (4)[read, label={0:4.read}, label={350:(d.0, 0, f.21)}]{}
       child {
-        node (10)[memo, label={0:10.memo}, label={350:(f.23, 1, Mod(d.1))}]{}
+        node (10)[memo, label={0:10.memo}, label={350:(1, d.1, f.23)}]{}
         child {
           node (11)[mod, label={0:11.mod}, label={350:(d.7, f.22)}]{}
           child {
-            node (12)[read, label={0:12.read}, label={350:(d.1, (2,4), f.21)}]{}
+            node (12)[read, label={0:12.read}, label={350:(d.1, 4, f.21)}]{}
             child {
-              node (13)[memo, label={0:13.memo}, label={350:(f.23, 1, Mod(d.4))}]{}
+              node (13)[memo, label={0:13.memo}, label={350:(1, d.4, f.23)}]{}
               child {
                 node (14)[mod, label={0:14.mod}, label={350:(d.8, f.22)}]{}
                 child {
-                  node (15)[read, label={0:15.read}, label={350:(d.4, (3,2), f.21)}]{}
+                  node (15)[read, label={0:15.read}, label={350:(d.4, 2, f.21)}]{}
                   child {
-                    node (16)[memo, label={0:16.memo}, label={350:(f.23, 1, Mod(d.5))}]{}
+                    node (16)[memo, label={0:16.memo}, label={350:(1, d.5, f.23)}]{}
                     child {
                       node (17)[mod, label={0:17.mod}, label={350:(d.9, f.22)}]{}
                       child {
-                        node (18)[read, label={0:18.read}, label={350:(d.5, (4,3), f.21)}]{}
+                        node (18)[read, label={0:18.read}, label={350:(d.5, 3, f.21)}]{}
                         child {
-                          node (19)[memo, label={0:19.memo}, label={350:(f.23, 1, Mod(d.6))}]{}
+                          node (19)[memo, label={0:19.memo}, label={350:(1, d.6, f.23)}]{}
                           child {
                             node (20)[mod, label={0:20.mod}, label={350:(d.10, f.22)}]{}
                             child {
@@ -892,25 +926,25 @@ child {
                           }
                         }
                         child {
-                          node (23)[write, label={0:23.write}, label={350:(d.9, (4,6))}]{}
+                          node (23)[write, label={0:23.write}, label={350:(d.9, 6)}]{}
                         }
                       }
                     }
                   }
                   child {
-                    node (24)[write, label={0:24.write}, label={350:(d.8, (3,4))}]{}
+                    node (24)[write, label={0:24.write}, label={350:(d.8, 4)}]{}
                   }
                 }
               }
             }
             child {
-              node (27)[write, label={0:27.write}, label={350:(d.7, (2,8))}]{}
+              node (27)[write, label={0:27.write}, label={350:(d.7, 8)}]{}
             }
           }
         }
       }
       child {
-        node (26)[write, label={0:26.write}, label={350:(d.2, (1,0))}]{}
+        node (26)[write, label={0:26.write}, label={350:(d.2, 0)}]{}
       }
     }
   }
@@ -924,21 +958,41 @@ child {
 \end{figure}
 
 
-%\chapter{Calculating Trace Distance}
-%\label{ch:calc_trace_distance}
+\chapter{Calculating Trace Distance}
+\label{ch:calc_trace_distance}
 
-%Consulting DDGs can greately ease the debugging of TBD programs. Not only bugs in algorithms can be found quicker, also the prerformance of the program can be analysed. When we update the input and run change propagation for any program, the program state updates and therefore the DDG changes. By comparing the DDGs of two exectutions of the same program with two different inputs each, we can inspect how well the program handled change propagation. As already mentioned in \ref{sec:trace_distance}, these difference is called \textit{Trace Distance}. 
+Consulting DDGs can greately ease the debugging of TBD programs. Not only bugs in algorithms can be found quicker, also the prerformance of the program can be analysed. When we update the input and run change propagation for any program, the program state updates and therefore the DDG changes. By comparing the DDGs of two exectutions of the same program with two different inputs each, we can inspect how well the program handled change propagation. As already mentioned in \ref{sec:trace_distance}, these difference is called \textit{Trace Distance}. 
 
-%The trace distance of two DDGs basically indicates the number of closures to re-execute during change propagation. A constant increase in trace distance indicates a constant increase in execution time. It is feasiable to assume that each closure in a TBD program can be executed in constant time, excluding subcalls to $mod$, $read$ or $memo$ the closure containes. The reason is that control structures like loops are not available in TBD programs. Iterating over input elements has to be done using recursion, where each recursion step places new $read$ calls. It should be noted that it is possible to write programs that do not satisfy this condition, for example by putting the whole input into an array stored in a single mod, reading that mod and iterating over the whole array at once. Such a program would, however, perform really bad when propagating input changes and miss the point of incremental computation.
+The trace distance of two DDGs basically indicates the number of closures to re-execute during change propagation. A constant increase in trace distance indicates a constant increase in execution time. It is feasiable to assume that each closure, excluding subcalls to $mod$, $read$ or $memo$ the closure containes, in a TBD program can be executed in constant time. The reason is that control structures like loops are not available in TBD programs. Iterating over input elements has to be done using recursion, where each recursion step places new $read$ calls. THe $read$ call will correspond with a new closure, that will be countet seperately if applicable. It should be noted that it is possible to write programs that do not satisfy this condition, for example by putting the whole input into an array stored in a single mod, reading that mod and iterating over the whole array at once. Such a program would, however, perform bad when propagating input changes and miss the point of incremental computation.
 
-%As already mentioned, calculating trace distance is straight forward using a greedy matching. We create two sets $A$ and $B$, where $A$ holds all nodes of the first DDG and $B$ holds all nodes of the second DDG. Foreach node in $A$, we search $B$ for an equivalent node. If we find an equivalent node, we remove both nodes from $A$ and $B$, respectively. The count of remeaning nodes, or formally $|A| + |B|$ is the trace distance of the two DDGs. 
+As already mentioned, calculating trace distance is straight forward using a greedy matching. We create two sets $A$ and $B$, where $A$ holds all nodes of the first DDG and $B$ holds all nodes of the second DDG. Foreach node in $A$, we search $B$ for an equivalent node. If we find an equivalent node, we remove both nodes from $A$ and $B$, respectively. The count of remeaning nodes, or formally $|A| + |B|$ is the trace distance of the two DDGs. 
 
-%The interesting part here, however, is how we define equality of nodes. In this chapter, we explain how it is possible to create multiple, meaningful definitions of equality that result in different meaningful results for trace distance. 
+The interesting part here, however, is how we define equality of nodes. In this chapter, we explain how it is possible to create multiple, meaningful definitions of equality that result in different meaningful results for trace distance. 
   
-%\section{Node Tags}
-%For checking node equality, we create so called \textit{Node Tags}. A node tag is a ordered sets of values associated with a single node. When checking nodes for equality, we simply check whether the node tags equal. To ease the definition of node tags, we introduce a \textit{Function Tag}, which can be used inside node tags. The function tag uniquely represents a closure by holding an unique function id and the name and value of all free variables bound from by the closure from an outer scope. If two function tags are equal, the corresponding closures are also equal. 
+\section{Types of Trace Distance}
+For checking node equality, we introduce so called \textit{Node Tags}. A node tag is a ordered set of values associated with a single node. When checking nodes for equality, we simply check whether the node tags equal. In the following sections, we will introduce multiple forms of node tags that correspond to different metrics. Node tags usually consist of subsets of the properties introduced while explaining TBD DDGs in section \ref{sec:tbd_ddgs}.
 
-%Since tags can also contain values that are read or written in the program, it is important that all data structures used by the program implement a meaningful method to check for equality. Modifiables form an exception and can be compared by comparing the id of the modifiable, regardless of the stored value. 
+Since tags can also contain values that are read or written in the program, it is important that all data structures used by the program implement a meaningful method to check for equality. Modifiables form an exception and can are compared by comparing the id of the modifiable, regardless of the stored value. 
+
+\subsection{Pure Trace Distance}
+
+The most basic form of trace distance is induced by comparing nodes by their unique ids: It is sufficient to include only the unique id in the node tags for comparison. This means that if a node is removed or added, it will increase the trace distance by one. If a node is re-executed, it will count twice. We call this form of trace distance \textit{Pure Trace Distance}. For two DDGs $A$ and $B$ of two successive executions, we denote pure trace distance as $\delta_p(A, B)$.
+
+Since pure trace distance basically counts all nodes that were removed or added from the DDG while transforming the program into an updated state, it reflects how efficient change propagation was done in practice. Therefore, pure trace distance is only meaningful for two successive pairs of executions. Comparing node ids for non-successive pairs of executions is not meaningful, since two identical program runs might lead to nodes with differing ids, depending on the executions done before. 
+
+Pure trace distance is useful for comparing two versions of a program and to investigate which one performed better under certain loads.
+
+\subsection{Memo-Sensitive Trace Distnace}
+
+An interesting aspect of a self-adjusting program is how well memoization was handled. For this purpose, we introduce \textit{Memo-Sensitivie Trace Distance}. For two DDGs, $A$ and $B$, we denote memo-sensitive trace distance as $\delta_m(A, B)$.
+
+To implement memo-sensitive trace distance, we include all properties introduced in section \ref{sec:tbd_ddgs} except the node id into the tag. This is done because, as mentioned before, the properties of each node completely define the state of the corresponding call. If all properties of two nodes equal, the corresponding functions will execute equally. Those nodes are not counted by memo-sensitive trace distance, since their re-evaluation can be omitted using memoization. In other words, memo-sensitive trace distance indicates how well a program could perform, if all calls were memoized.
+
+\subsection{Allocation-Sensitive Trace Distnace}
+
+Keyed allocation can also greatly impact program performance, as illustrated in section \ref{sec:keyed_alloc}. However, it is possible to measure how well a program would perform if all memory is allocated in a way that no change propagation happens due to re-allocation of memory. We call this form of trace distance \textit{Allocation-Sensiitive Trace Distance}. For allocation-sensitive trace distance, we use node tags without the node id. Additonally, we purge all ids of modifiables from the node tags. A tag for a read node, for example, will then only contain the executed closure and the value of the corresponding mod, but not the id of the mod that has been read. It is important to note that we also remove all modifiables from the argument list of memo nodes. 
+
+For two DDGs, $A$ and $B$, we denote allocation-sensitive trace distance as $\delta_a(A, B)$.
 
 %[Todo: \"Full\" trace distance, \"Program-Only\" trace distance, \"Allocation-Insensitive\" trace distance: Describe and find more suitable names.]
 
