@@ -512,7 +512,7 @@ It is possible to circumvent this drawback by using a slightly more complicated 
 
 For calculating trace distance, the implementation of the underlying platform is of importance, since it influences how programs are structured and how DDG nodes represent function calls. Therefore, this section discusses how TBD provides self-adjusting computation, how variables are represented, and especially how programs on top of TBD are written. 
 
-\section{Programming Interface}
+\section{Programming Interface - TODO: Maybe higher level e.g. not sacla but tbd commands}
 
 The usage of a special memory model enables TBD to track read-write dependencies. When such a dependency is detected, the code that depends on the changed variable has to be identified and re-evaluated. This requires that the environment of the previous execution is still available. For many programming languages, this task is not straight-forward. Scala, however, supports the usage of \textit{Closures}. Closures are functions that are paired with their enclosing environment. This means that a closure can hold all information necessary to repeat a function evaluation. Furthermore, closures can be treated and passed around like variables. TBD adds a closure to execute to each read, memo or allocation call as parameter. The corresponding function calls the closure during execution. 
 
@@ -703,7 +703,7 @@ Each node in the DDG has to hold enough information to re-evaluate the correspon
 
 \begin{itemize}
 
-\item A \textit{Function Tag} is a data structure that represents a closure in a compact way. A function tag consists of a unique function id that identifies the closure and a list of free variables inside the function that are bound from an outer scope, including the name and the value of the variable. 
+\item A \textit{Function Tag} is a data structure that represents a closure in a compact way. A function tag consists of a unique function id that identifies the closure and a list of free variables inside the function that are bound from an outer scope, including the name and the value of the variable. This single detail is important, since those variables can influence the closure behavior.
 
 \item Each node has an unique node id and a node type, either $read$, $write$, $memo$, $mod$ or $root$. Whenever a new node is created, for example during re-evaluation, a new id is generated for the new node.
 
@@ -986,15 +986,201 @@ Pure trace distance is useful for comparing two versions of a program and to inv
 
 An interesting aspect of a self-adjusting program is how well memoization was handled. For this purpose, we introduce \textit{Memo-Sensitivie Trace Distance}. For two DDGs, $A$ and $B$, we denote memo-sensitive trace distance as $\delta_m(A, B)$.
 
-To implement memo-sensitive trace distance, we include all properties introduced in section \ref{sec:tbd_ddgs} except the node id into the tag. This is done because, as mentioned before, the properties of each node completely define the state of the corresponding call. If all properties of two nodes equal, the corresponding functions will execute equally. Those nodes are not counted by memo-sensitive trace distance, since their re-evaluation can be omitted using memoization. In other words, memo-sensitive trace distance indicates how well a program could perform, if all calls were memoized.
+To implement memo-sensitive trace distance, we include all properties introduced in section \ref{sec:tbd_ddgs} except the node id into the tag. This is done because, as mentioned before, the properties of each node completely define the state of the corresponding call. If all properties of two nodes equal, the corresponding functions will execute equally. Those nodes are not counted by memo-sensitive trace distance, since their re-evaluation can be omitted using memoization. In other words, memo-sensitive trace distance indicates how well a program could perform, if all calls were memoized. A proof of correctness can be found in [TODO: REF].
 
-\subsection{Allocation-Sensitive Trace Distnace}
+\subsection{Allocation-Sensitive Trace Distance}
 
 Keyed allocation can also greatly impact program performance, as illustrated in section \ref{sec:keyed_alloc}. However, it is possible to measure how well a program would perform if all memory is allocated in a way that no change propagation happens due to re-allocation of memory. We call this form of trace distance \textit{Allocation-Sensiitive Trace Distance}. For allocation-sensitive trace distance, we use node tags without the node id. Additonally, we purge all ids of modifiables from the node tags. A tag for a read node, for example, will then only contain the executed closure and the value of the corresponding mod, but not the id of the mod that has been read. It is important to note that we also remove all modifiables from the argument list of memo nodes. 
 
-For two DDGs, $A$ and $B$, we denote allocation-sensitive trace distance as $\delta_a(A, B)$.
+For two DDGs, $A$ and $B$, we denote allocation-sensitive trace distance as $\delta_a(A, B)$. A prof of correctness can be found in [TODO: REF].
 
-%[Todo: \"Full\" trace distance, \"Program-Only\" trace distance, \"Allocation-Insensitive\" trace distance: Describe and find more suitable names.]
+\section{Example: Different Trace Distances for Map}
+
+For an illustration of our trace distances, we consider an unmemoized version of the map function introduced in section \ref{sec:simple_example}. For an unmemoized version, we are able to take the code from listing \ref{code:map_example} and remove the memoizer from the code. The resulting code can be seen in listing \ref{code:unmemoized_map_example}. While no longer memoized, the code still forms a recursive map function that supports change propagation. For any call that is re-executed, however, all subcalls are re-executed, leading to unnecassary overhead.
+
+\begin{figure}
+\begin{lstlisting}[frame=single,basicstyle=\ttfamily,numbers=left,mathescape=true]
+def map[U]
+  (mapper: T => U)
+  (implicit c: Context):
+    Mod[SimpleList[U]] = {
+  mod {
+    read(currentElem) {
+      case null => write(null)
+      case elem => {
+        val newValue = mapper(elem.value)
+        val newNext = elem.next.map(mapper)
+        write(new SimpleList(newValue, newNext))
+      }
+    }
+  }
+}
+\end{lstlisting}
+\caption{A unmemoized map function implemented on top of TBD}
+\label{code:unmemoized_map_example}
+\end{figure}
+
+We now execute this function with the input list $(1, 2, 3, 4, 5)$ and a mapping function that multiplies every element by two, like before. The DDG of the execution is shown in figure \ref{fig:unmemoized_map_tbd_ddg}. As we can see, the DDG is similar to the DDG explained in section \ref{sec:tbd_ddgs}, but lacking memo nodes. 
+
+
+%generated using: 
+%bin/visualization.sh -a smmap -t manual -i 1  
+%u 1 1
+%a 2 2
+%a 3 3
+%a 4 4
+%a 5 5
+%p
+
+\begin{figure}
+\centering
+\begin{tikzpicture}[font=\sffamily,very thick,level/.style={sibling distance=40mm, level distance=10mm}]
+\tikzstyle{every node}=[font=\small]
+\node [root, label={0:1.root}, label={350:}]{}
+child {
+  node (2)[mod, label={0:2.mod}, label={350:(d.11, f.6)}]{}
+  child {
+    node (3)[read, label={0:3.read}, label={350:(d.0, (1,1), f.5)}]{}
+    child {
+      node (4)[mod, label={0:4.mod}, label={350:(d.22, f.6)}]{}
+      child {
+        node (5)[read, label={0:5.read}, label={350:(d.1, (2,2), f.5)}]{}
+        child {
+          node (6)[mod, label={0:6.mod}, label={350:(d.23, f.6)}]{}
+          child {
+            node (7)[read, label={0:7.read}, label={350:(d.2, (3,3), f.5)}]{}
+            child {
+              node (8)[mod, label={0:8.mod}, label={350:(d.24, f.6)}]{}
+              child {
+                node (9)[read, label={0:9.read}, label={350:(d.3, (4,4), f.5)}]{}
+                child {
+                  node (10)[mod, label={0:10.mod}, label={350:(d.25, f.6)}]{}
+                  child {
+                    node (11)[read, label={0:11.read}, label={350:(d.4, (5,5), f.5)}]{}
+                    child {
+                      node (12)[mod, label={0:12.mod}, label={350:(d.26, f.6)}]{}
+                      child {
+                        node (13)[read, label={0:13.read}, label={350:(d.5, null, f.5)}]{}
+                        child {
+                          node (14)[write, label={0:14.write}, label={350:(d.26, null)}]{}
+                        }
+                      }
+                    }
+                    child {
+                      node (15)[write, label={0:15.write}, label={350:(d.25, (5,10))}]{}
+                    }
+                  }
+                }
+                child {
+                  node (16)[write, label={0:16.write}, label={350:(d.24, (4,8))}]{}
+                }
+              }
+            }
+            child {
+              node (17)[write, label={0:17.write}, label={350:(d.23, (3,6))}]{}
+            }
+          }
+        }
+        child {
+          node (18)[write, label={0:18.write}, label={350:(d.22, (2,4))}]{}
+        }
+      }
+    }
+    child {
+      node (19)[write, label={0:19.write}, label={350:(d.11, (1,2))}]{}
+    }
+  }
+};
+\end{tikzpicture}
+\caption{DDG of the unmemoized $map$ function with input $(1, 2, 3, 4, 5)$.}
+\label{fig:unmemoized_map_tbd_ddg}
+\end{figure}
+
+If we now change the second input value from $2$ to $6$ and propagate the changes, almost the whole, program is re-executed. This can be seen in figure \ref{fig:unmemoized_map_tbd_ddg_changepropagation}. The re-executed part of the program is highlighted in red. Notice that all re-executed nodes also have new node-ids. Therefore, the pure trace distance $\delta_p$ is $28$ for this pair of executions, because $14$ nodes were added, and $14$ nodes were removed. 
+
+The memo-sensitive trace distance $\delta_m$ for this example is only $20$. The reason is that the read nodes that were not changed are not counted. The mod and write nodes, even unnecessarily executed, are counted, because the modifiables were re-allocated and therefore changed. The counted nodes are highlighted in figure \ref{fig:unmemoized_map_tbd_ddg_changepropagation} using a red color. This indicates that the corresponding read calls did not change and therefore did not have any dependencies to the changed read. Using this hint, we could try to place a $memo$ call before each read, which is  done in our memoized code from listing \ref{code:map_example}. The memoized version would have a pure trace distance of $4$ for this input, because $2$ nodes would be re-executed.
+
+Allocation-sensitive trace distance, $\delta_a$, is also $4$. The reason is that allocation-sensitive trace distance also does not count nodes that are not counted by memo-sensitive trace distance. Additionally, adresses of modifiables are ignored. Therefore, all mod and write nodes where the written value did not change, were omitted. The counted nodes are highlighted in green.  
+
+\begin{figure}
+\centering
+\begin{tikzpicture}[font=\sffamily,very thick,level/.style={sibling distance=40mm, level distance=10mm}]
+\tikzstyle{every node}=[font=\small]
+\node [root, label={0:1.root}, label={350:}]{}
+child {
+  node (2)[mod, label={0:2.mod}, label={350:(d.11, f.6)}]{}
+  child {
+    node (3)[read, label={0:3.read}, label={350:(d.0, (1,1), f.5)}]{}
+    child {
+      node (20)[mod, label={0:20.mod}, label={350:(d.22, f.6)}]{}
+      child {
+        node (21)[read, label={0:21.read}, label={350:(d.1, (2,6), f.5)}]{}
+        child {
+          node (22)[mod, label={0:22.mod}, label={350:(d.23, f.6)}]{}
+          child {
+            node (23)[read, label={0:23.read}, label={350:(d.2, (3,3), f.5)}]{}
+            child {
+              node (24)[mod, label={0:24.mod}, label={350:(d.24, f.6)}]{}
+              child {
+                node (25)[read, label={0:25.read}, label={350:(d.3, (4,4), f.5)}]{}
+                child {
+                  node (26)[mod, label={0:26.mod}, label={350:(d.25, f.6)}]{}
+                  child {
+                    node (27)[read, label={0:27.read}, label={350:(d.4, (5,5), f.5)}]{}
+                    child {
+                      node (28)[mod, label={0:28.mod}, label={350:(d.26, f.6)}]{}
+                      child {
+                        node (29)[read, label={0:29.read}, label={350:(d.5, null, f.5)}]{}
+                        child {
+                          node (30)[write, label={0:30.write}, label={350:(d.26, null)}]{}
+                        }
+                      }
+                    }
+                    child {
+                      node (31)[write, label={0:31.write}, label={350:(d.25, (5,10))}]{}
+                    }
+                  }
+                }
+                child {
+                  node (32)[write, label={0:32.write}, label={350:(d.24, (4,8))}]{}
+                }
+              }
+            }
+            child {
+              node (33)[write, label={0:33.write}, label={350:(d.23, (3,6))}]{}
+            }
+          }
+        }
+        child {
+          node (34)[write, label={0:34.write}, label={350:(d.22, (2,12))}]{}
+        }
+      }
+    }
+    child {
+      node (19)[write, label={0:19.write}, label={350:(d.11, (1,2))}]{}
+    }
+  }
+};
+\begin{pgfonlayer}{background}
+\fill[red,opacity=1] \convexpath{21,34,31,30,28,26,24,22}{24pt};
+\fill[blue,opacity=1] \convexpath{21,34,22}{16pt};
+\fill[blue,opacity=1] \convexpath{24, 33}{16pt};
+\fill[blue,opacity=1] \convexpath{26, 32}{16pt};
+\fill[blue,opacity=1] \convexpath{28, 31}{16pt};
+\fill[blue,opacity=1] \convexpath{30, 30}{16pt}; %TODO: Colors
+\fill[green,opacity=1] \convexpath{21, 34}{8pt}; %TODO: Whole Circle
+\end{pgfonlayer}
+\end{tikzpicture}
+\caption{DDG of the unmemoized $map$ function after the second value was updated to $6$.}
+\label{fig:unmemoized_map_tbd_ddg_changepropagation}
+\end{figure}
+
+
+Note that it is not meaningful to introduce keyed allocation in this example. Pure trace distance and therefore change propagation time would still stay the same, since change propagation is not halted. It is therefore advisable to inspect a run using memo-sensitive trace distance before allocation-sensitive trace distance. In general, it can be said, that a trace distance that only utilizes larger subsets of node properties should be consulted before a trace distance that uses smaller subsets of node properties. This way, erronous assumptions can be avoided.
+
+It should also be noted that it is dangerous to generalize from one example or run to all applications of a certain program or function. Consulting trace distances, however, might be very useful for finding potential performance bottlenecks for certain inputs. 
+
+\chapter{Implementation}
 
 %\chapter{Implementation}
 %\label{ch:impl}
