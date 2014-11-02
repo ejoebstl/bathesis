@@ -1098,7 +1098,7 @@ child {
 
 If we now change the second input value from $2$ to $6$ and propagate the changes, almost the whole, program is re-executed. This can be seen in figure \ref{fig:unmemoized_map_tbd_ddg_changepropagation}. The re-executed part of the program is highlighted in red. Notice that all re-executed nodes also have new node-ids. Therefore, the pure trace distance $\delta_p$ is $28$ for this pair of executions, because $14$ nodes were added, and $14$ nodes were removed. 
 
-The memo-sensitive trace distance $\delta_m$ for this example is only $20$. The reason is that the read nodes that were not changed are not counted. The mod and write nodes, even unnecessarily executed, are counted, because the modifiables were re-allocated and therefore changed. The counted nodes are highlighted in figure \ref{fig:unmemoized_map_tbd_ddg_changepropagation} using a red color. This indicates that the corresponding read calls did not change and therefore did not have any dependencies to the changed read. Using this hint, we could try to place a $memo$ call before each read, which is  done in our memoized code from listing \ref{code:map_example}. The memoized version would have a pure trace distance of $4$ for this input, because $2$ nodes would be re-executed.
+The memo-sensitive trace distance $\delta_m$ for this example is only $20$. The reason is that the read nodes that were not changed are not counted. The mod and write nodes, even unnecessarily executed, are counted, because the modifiables were re-allocated and therefore changed. The counted nodes are highlighted in figure \ref{fig:unmemoized_map_tbd_ddg_changepropagation} using a red color. This indicates that the corresponding read calls did not change and therefore did not have any dependencies to the changed read. Using this hint, we could try to place a $memo$ call before each read, which is  done in our memoized code from listing \ref{code:map_example}. The memoized version would have a pure trace distance of $4$ for this input, because $2$ nodes would be re-executed. This case can be seen for a similar example in figure \ref{fig:map_change_ddg_memo}. 
 
 Allocation-sensitive trace distance, $\delta_a$, is also $4$. The reason is that allocation-sensitive trace distance also does not count nodes that are not counted by memo-sensitive trace distance. Additionally, adresses of modifiables are ignored. Therefore, all mod and write nodes where the written value did not change, were omitted. The counted nodes are highlighted in green.  
 
@@ -1180,7 +1180,60 @@ Note that it is not meaningful to introduce keyed allocation in this example. Pu
 
 It should also be noted that it is dangerous to generalize from one example or run to all applications of a certain program or function. Consulting trace distances, however, might be very useful for finding potential performance bottlenecks for certain inputs. 
 
+We will discuss the application of trace distance for more complex examples in [TODO: REF]. 
+
 \chapter{Implementation}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.7]{uml/Framework.pdf}
+\end{center}
+\caption{Overview over the analyzer framework architecture}
+\label{fig:testing_framework}
+\end{figure}
+
+To test the concept of trace distance, we created an analyzer framework that is capable of generating input for TBD and provides an interface for TBD programs to test. The input consists of initial data and updates that are propagated by TBD. During runtime, additional information is collected and added to the DDGs, then the DDG of each execution is copied, since TBD mutates its DDS during change propagation. Also, found dependencies are summarized to ease further processing. The DDGs, results and input of each run are stored for analysis. Modules to process the results can be added. Existing modules include visualization of DDGs, comparing DDGs of different runs, calculating trace distance, and aggregation of statistics. This basic architecture of this analyzer framework is illustrated in Figure \ref{fig:testing_framework}.
+
+\section{Input Generation and [[Testee]] Interface}
+
+For enabling flexible input generation during tests, an interface for test case generators has been implemented. The architecture of this interface, including existing test case generators, can be seen in \ref{fig:input_generation}. The figure also illustrates the interface that invokes programs that should be tested. 
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.7]{uml/TestBase.pdf}
+\end{center}
+\caption{Overview over the input generation}
+\label{fig:input_generation}
+\end{figure}
+
+\subsection{Adjustable}
+
+The interface\footnote{Interface or Trait in Scala} $Adjustable$ originates from TBD. A program that should be executed by TBD has to implement this interface. The $run$ method of the Interface $Adjustable$ takes a prameter, the program input, and returns a parameter, the program output. The types of both parameters are bound to type parameters. Both types are usually based on modifiables. 
+
+\subsection{TestAlgorithm}
+
+The interface $TestAlgorithm$ implements the interface $Adjustible$ and represents a program or algorithm that should be tested using this framework. The $TestAlgorithm$ interface provides three methods. The method $getResult$ is responsible for converting the output given by the $run$ method into some representation without modifiables. The corresponding type is denoted $NativeOutput$. If this converted representation does not equal the value returned from the method $getExpectedResult$ for the same input, the test fails. The method $getExpectedResult$ is responsible for computing the program output in a non-incremental way. Therefore, the input is given as a map, containing keys and values. The $getInput$ method has to return an instance of the abstract $tbd.Input$ class, that manages input for $TBD$ programs. This class has methods to add, delete or update modifiables and a getter that returns the input in the desired representation, for example a linked list. This is limited to input modifiables that hold key-value pairs of intergers. 
+
+\subsection{ExperimentSource}
+
+The interface $ExperimentSource$ represents a whole test, including input generation, that can be executed in our testing framework. The interface provides a single method, $setExperimentListener$, that associates an instance of $ExperimentSink$ with the instance. Whenever a single step of the experiment finishes, the instance of $ExperimentSink$ will be notified with the results.
+
+\subsection{TestBase}
+
+The abstract class $TestBase$ also represents a test, but also implements some useful methods that can be used to create tests. The boolean $checkResults$ indicates wether run results should be checked by the test, the integer $initialSize$ indicates the size of the first input set, and $algorithm$ is the algorithm or program to test. 
+
+The method $addValue$ adds a modifiable to the input using the given key and value. The method $removeValue$ removes the modifiable with the given key from the input. 
+The method $updateValue$ updates the modifiable with the given key to the new given value. 
+
+The $run$ method, when invoked by TBD, creates the $Input$ object for the given algorithm to test. Then, the abstract $initialize$ method is called, where the test should be initialized. After that, the abstract method $step$ is called until one call returns $false$. After each call of step, TBD is notified to propagate the changes. The corresponding $ExperimentSink$ is notified about the results of change propagation, including the current DDG and input. At the end, the abstract method $dispose$ is invoked.
+
+\subsection{Implemented Tests}
+
+The class $RandomExhaustiveTest$ implements a test that performs random actions on the input. The test will do $count$ steps. The number of mutations during each step will be evenly selected between $maxMutations$ and $minMutations$. 
+
+The class $TargetedExhaustiveTest$ will perform any possible [consecutive]updates on the input. In other words, for each position in the input, the test will perform updates of all consecutive subsets starting at this location. The parameter $repetitions$ indicates how often this test should be repeated. It is not recommended to run this test with large input sets, since the time complexity of generating all possible consecutive updates is $O(n^2)$, where $n$ denotes the input size.
+
+The class $ManualTest$ uses the command line to let the user update the input of the program. 
 
 %\chapter{Implementation}
 %\label{ch:impl}
