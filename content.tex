@@ -1194,6 +1194,8 @@ We will discuss the application of trace distance for more complex examples in [
 
 To test the concept of trace distance, we created an analyzer framework that is capable of generating input for TBD and provides an interface for TBD programs to test. The input consists of initial data and updates that are propagated by TBD. During runtime, additional information is collected and added to the DDGs, then the DDG of each execution is copied, since TBD mutates its DDS during change propagation. Also, found dependencies are summarized to ease further processing. The DDGs, results and input of each run are stored for analysis. Modules to process the results can be added. Existing modules include visualization of DDGs, comparing DDGs of different runs, calculating trace distance, and aggregation of statistics. This basic architecture of this analyzer framework is illustrated in Figure \ref{fig:testing_framework}.
 
+It is important to note that in the current state, the framework uses ordered sets implemented as linked lists as input.
+
 \section{Input Generation and [[Testee]] Interface}
 
 For enabling flexible input generation during tests, an interface for test case generators has been implemented. The architecture of this interface, including existing test case generators, can be seen in \ref{fig:input_generation}. The figure also illustrates the interface that invokes programs that should be tested. 
@@ -1216,7 +1218,7 @@ The interface $TestAlgorithm$ implements the interface $Adjustible$ and represen
 
 \subsection{ExperimentSource}
 
-The interface $ExperimentSource$ represents a whole test, including input generation, that can be executed in our testing framework. The interface provides a single method, $setExperimentListener$, that associates an instance of $ExperimentSink$ with the instance. Whenever a single step of the experiment finishes, the instance of $ExperimentSink$ will be notified with the results.
+The interface $ExperimentSource$ represents a whole test, including input generation, that can be executed in our testing framework. The interface provides a single method, $setExperimentListener$, that associates an instance of $ExperimentSink$ with the instance. Whenever a single step of the experiment finishes, the instance of $ExperimentSink$ will be notified with the results. All of the output modules that will be described later inherit from the interface $ExperimentSink$.
 
 \subsection{TestBase}
 
@@ -1227,7 +1229,7 @@ The method $updateValue$ updates the modifiable with the given key to the new gi
 
 The $run$ method, when invoked by TBD, creates the $Input$ object for the given algorithm to test. Then, the abstract $initialize$ method is called, where the test should be initialized. After that, the abstract method $step$ is called until one call returns $false$. After each call of step, TBD is notified to propagate the changes. The corresponding $ExperimentSink$ is notified about the results of change propagation, including the current DDG and input. At the end, the abstract method $dispose$ is invoked.
 
-\subsection{Implemented Tests}
+\subsection{Implemented Test Generators}
 
 The class $RandomExhaustiveTest$ implements a test that performs random actions on the input. The test will do $count$ steps. The number of mutations during each step will be evenly selected between $maxMutations$ and $minMutations$. 
 
@@ -1235,15 +1237,147 @@ The class $TargetedExhaustiveTest$ will perform any possible [consecutive]update
 
 The class $ManualTest$ uses the command line to let the user update the input of the program. 
 
-%\chapter{Implementation}
-%\label{ch:impl}
-%The main problem is that DDG nodes, which represent function calls, have to be compared for equality. The problem of comparing functions in general is, however, one of the unsolved problems of computer science. 
+\section{Data Collection}
 
-%\section{Architecture}
+TBD holds a DDG to control change propagation. It is possible to copy and access the DDG for analytical purposes. However, the DDG introduced by TBD did not contain a compact or unique representation of called functions, as described in section \ref{tbd:sec:tbd_ddgs}. The reason is that for implementing change propagation, closures introduced by the Scala language are sufficient. Those closures, however, can not be tested for equality, since this is a unsolved problem in general. In particular, free variables that are bound by an outer scope are difficult to handle. It might be possible, that two closures are syntactically identical, and the parameters are the same, but the results are still different due to free variables. Such a situation is illustrated in listing \ref{code:bound_free_var}. In the example, the variable $a$ inside the closure passed to the $write$ call is bound to the variable $a$ defined in line $1$. The closure is therfore dependent on the scope that contains the closure. This dependency is semantically identical to a dependency passed to the corresponding function call. 
 
-%\section{Data Collection}
+\begin{figure}
+\begin{lstlisting}[frame=single,basicstyle=\ttfamily,numbers=left,mathescape=true]
+val a = 10
+mod {
+  write(a)
+}
+\end{lstlisting}
+\caption{Example of a free variable that is bound from an outer scope} 
+\label{code:bound_free_var}
+\end{figure}
 
-%\subsection{Usage of Scala Macros}
+\subsection{[[Collection]] of Function Tags}
+
+To gather function tags, we utilize \textit{Scala Macros}. Scala macros are scala programs that are invoked during compile time and can access and modify all information accessible by the compiler. Scala macros get an \textit{Abstract Syntax Tree (AST)} as input, which can be modified during macro execution \cite{TODO} [TODO]. An AST is basically a tree representation of source code, as used internally by the scala compiler. It is important to emphasis that an AST does not represent call trees, but trees of symbols parsed from a source file. In particular, this means that a call to a function that is defined in another file is a leave node in the AST, while an anonymous function is representes as a subtree. 
+
+For collecting function tags, we replace the $read$, $memo$, $mod$ methods and the $apply$ method of $Modizer$ and $Memoizer$ with a macro application. The original implementations of the methods are renamed and marked as private. Also, we add a function tag as additional parameter to the private method. The macro is executed by the compiler for each call of those methods. Therefore, it is possible to generate unique IDs for each call, and therefore for each closure. When called, the macro examines the closure passed to the function, which is available as AST. Using the AST we find all free variables that are bound by the closure from an outer scope. To do so, we traverse the AST of the closure, to locate all references to variables. Then, for each reference, we traverse all parent nodes of the reference in the AST of the closure and check wether the variable is defined there. If so, we can drop the reference. Finally, we generate code that instantiates a list that contains the values of all free variables and their corresponding names as strings. Then, the generated code instantiates a new instance of function tag with the generated ID and the list of free variable and calls the original implementation of the corresponding method with the function tag as additional parameter. The function tag is then attached to the corresponding DDG node by TBD at run time. 
+
+\subsection{DDG Implementation}
+
+During runtime, we receive the DDG from TBD. Since the DDG of TBD is mutable, we need to transfer it to an immutable representation that is more suitable for fast traversal. The corresponding classes are outlined in figure \ref{fig:framework_ddg}. 
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.7]{uml/DDG.pdf}
+\end{center}
+\caption{Overview over the DDG processing framework}
+\label{fig:framework_ddg}
+\end{figure}
+
+We introduce a $Node$ class for DDG nodes. This node class holds a stack trace of the corresponding call, the node id and the tag, which holds all properties of the DDG node, including the node type. Also, we introduce an abstract $Edge$ class for DDG edges, referring to a source and a destination node. Subclasses of the $Edge$ class represent different types of edges, like $Control$, $ModWrite$, $ReadWrite$ or $FreeVar$ dependencies. The latter refers to dependencies introduced by free variables bound from an outer scope and also refers the name and values of those variables. 
+
+The $DDG$ class itself includes an [[adj-list]], a set containg all nodes and a reference to the rood node of the DDG. Since the control edges of a DDG form a tree that can be easily traversed in a meaningful order, helper methods to find child nodes and parents regarding control dependencies exist. 
+
+To ease the traversion of DDGs for processing, a $GraphIterator$ interface was introduced. Also, three implemented iterators are provided: 
+
+\begin{enumerate}
+\item The $DfsIterator$, that iterates over the graph in depth-first order and outputs each node whenever it is visited by the depth-first search. 
+\item The $DfsFirstIterator$, [TODO: Pre-Order might be the correct name?] that iterates over the graph in depth-first order and only outputs the node when it is visited by the depth-first search for the first time.
+\item The $TopologicalIterator$, that iterates over the graph in depth-first order and only outputs the node when it is visited by the depth-first search for the last time.  
+\end{enumerate}
+
+\subsection{Dependency Processing}
+
+All nodes in the DDG contain a lot of information, as described in section \ref{sec:tbd_ddgs}. For visualization purposes, however, it is useful to show dependencies between nodes as edges when displaying the DDG. 
+
+We consult each mod, write and read node and pair them using the corresponding mod IDs. This way, we can find all allocate-write and write-read dependencies and insert them into the DDG as $ModWrite$ or $ReadWrite$ edges.
+
+For each node that contains a function tag that has bound free variables, we traverse all call parents until we reach a node where the corresponding variable is no longer available. We also add a $FreeVar$ edge to the DDG here, which symbolises a free-variable dependency. If even the root node of the program contains a free variable that is bound from an outer scope, the variable originates from outside the program and can be traeated as constant. 
+
+It is possible to implement those operations very fast. For finding allocate-read and allocate-write dependencies, the DDG can be traversed in topological order, while the ids of allocated modifiables and the corresponding nodes are stored in a hash map. The search for free-variable dependencies can be implemented by inserting an edge from each node that has a dependency to its parent and then performing a path compression, by fusing adjacent dependency edges that refer to the same variable. Both approaches result in a runtime of $O(n)$.
+
+\subsection{Trace Distance}
+
+The computation of trace distance is straight forward, as already described in section \ref{ch:calc_trace_distance}. A greedy matching can be implemented using two sets and a for loop. Furthermore, we remember what nodes are removed or added to the DDGs to visualize them later.
+
+Since we have multiple valid definitions of node equality for calculating trace distance, we introduce a wrapper class that extracts the relevant properties from a node and implements the $equals$ and $hashCode$ method based on those properties. We apply this wrapper class to each node before calculating trace distance. This way we can simply rely on Scalas collection libraries.
+
+\section{Output [[Visualization]]}
+
+All the data collected from TBD needs to be visualized in a meaningful format. Especially dependencies and the comparison of DDGs can be shown best by using a graphical representation. Also, it has proved useful to automatically aggregate data from multiple tests to generate diagrams. 
+
+\subsection{DDG Visualization}
+
+We visualize DDGs using a small GUI implemented in Swing. A Screenshot of this GUI is shown in figure \ref{fig:ddg_vis_ui}. 
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.7]{screens/DDGVis.png}
+\end{center}
+\caption{Screenshot of the DDG visualizer}
+\label{fig:ddg_vis_ui}
+\end{figure}
+
+The drop down list at the top can be used to choose from different runs. The runs are identified by a increasing counter and the corresponding input, which are both shown in the list. Below, the selected DDG is shown in the same format as described in section \ref{sec:tbd_ddgs}. For selected nodes, however, dependencies are shown. The red, solid arrow indicates a write-read or allocate-write dependency. The exact dependency can be inferred from the types of the selected nodes. The dashed arrows correspond to dependencies introduced by free variables. The currently selected node is the node from which the dependency edges originate. 
+
+Below the DDG, the description of the currently selected node, a read node, is shown. In the first line, we see the call location of the current node, including method name, file, line number and TBD ID. The method name of $liftedTree1$ indicates that this node was re-executed during change propagation. In the second line we see the node type and the parameters of the call. In this case, the modifiable with the id $d.26$ and the value $null$ was read. Below this information, details regarding the closure can be found. The identifier of the closure is $76$ and there are four variables, $round$, $next$, $hasher$ and $memo$, bound from an outer scope. The colors of the text correspond to the colors of the arrows shown in the visualizer. The last part summarizes variables that are bound from outside the program.  
+
+The button in the top-right corner labeled $L$ dumps a [LaTeX] representation of the current DDG to the standard output stream. The [LaTeX] representation can be compiled using the package [Tikz].
+
+\subsection{DDG Comparison}
+
+For all our types of trace distance except pure trace distance, it is also suitable to calculate trace distance of non-successive runs. We therefore introduce a GUI to select and compare abritary runs. This GUI is shown in figure \ref{fig:ddg_diff_ui}. 
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.7]{screens/DiffView.png}
+\end{center}
+\caption{Screenshot of the DDG comparer}
+\label{fig:ddg_diff_ui}
+\end{figure}
+
+The GUI contains of two DDG visualizers, where two different DDGs can be selected. At the bottom, there exists a drop down-list to select the type of trace distance to apply. The results of the trace distance calculate are shown below. Added nodes correspond to nodes that are not in the left DDG, but in the right one. Removed nodes correspond to nodes that are in the right DDG, but not in the left one. Inside the visualizer, removed nodes are marked with a yellow border, added nodes are marked with a red border.
+
+\subsection{Table Export}
+
+It is possible to export the results of exhaustive tests as summarized table. The table resembles the test cases generated by $TargetedExhaustiveTest$. One axis indicates the index where input updates started, the other indicates the size of the update. The values stored in the table equal the trace distance of the ddg after the update versus before the update and therefore indicate the overhead of change propagation for the given update. 
+
+Table [TODO ref] shows an example of such an exported table for a naive map operation without memoization. Figure [TODO ref] shows the data as two-dimensional plot. We can recognize that not only the size of the update linearly increased the overhead of change propagation, but also the starting index of the update. Such a result usually indicates that memoization is either missing or not working. 
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|l|l|l|l|l|l|l|l|l|}
+\hline
+\diaghead{\theadfont Index}%
+{Length\\ }{Start\\ }  & 1  & 2  & 3  & 4  & 5  & 6  & 7  & 8  & 9  & 10 \\ \hline
+1    & 42 & 38 & 34 & 30 & 26 & 22 & 18 & 14 & 10 & 6  \\ \hline
+2    & 44 & 40 & 36 & 32 & 28 & 24 & 20 & 16 & 12 &    \\ \hline
+3    & 46 & 42 & 38 & 34 & 30 & 26 & 22 & 18 &    &    \\ \hline
+4    & 48 & 44 & 40 & 36 & 32 & 28 & 24 &    &    &    \\ \hline
+5    & 50 & 46 & 42 & 38 & 34 & 30 &    &    &    &    \\ \hline
+6    & 52 & 48 & 44 & 40 & 36 &    &    &    &    &    \\ \hline
+7    & 54 & 50 & 46 & 42 &    &    &    &    &    &    \\ \hline
+8    & 56 & 52 & 48 &    &    &    &    &    &    &    \\ \hline
+9    & 58 & 54 & 0  &    &    &    &    &    &    &    \\ \hline
+10   & 60 &    &    &    &    &    &    &    &    &    \\ \hline
+\end{tabular}
+\end{table}
+
+FUUUUUU LATEX
+
+\section{Command Line Interface}
+
+The analysis framework can be controlled using a command line interface. 
+
+[TODO: Either Table or List with arguments]
+
+\chapter{Use Case: Quicksort}
+
+
+
+%\begin{tikzpicture}
+%\begin{axis}
+%\addplot3[surf,mesh/ordering=y varies]
+%table[row sep=crcr]{data/simpleMap.dat};
+%\end{axis}
+%\end{tikzpicture}
+
 
 %\chapter{Use Cases}
 %\label{ch:use_cases}

@@ -4,11 +4,13 @@
 % Thesis - Main document
 % ----------------------------------------------------------------
 
+\usepackage{pgfplots}
 \usepackage{listings}
 \usetikzlibrary{trees,arrows,positioning, calc, shapes.geometric}
 
 \pgfdeclarelayer{background}
 \pgfsetlayers{background,main}
+\pgfplotsset{width=7cm}
 
 
 \newcommand{\convexpath}[2]{
@@ -50,6 +52,8 @@
 \tikzstyle{memo}=[draw,fill=green!50,shape=diamond,minimum size=8pt,inner sep=0pt]
 \tikzstyle{write}=[draw,fill=orange,circle,minimum size=8pt,inner sep=0pt]
 \tikzstyle{par}=[draw,fill=yellow,shape=diamond,minimum size=8pt,inner sep=0pt]
+
+\usepackage{makecell}
 
 %% -------------------------------
 %% |  Information for PDF file   |
