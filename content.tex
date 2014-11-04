@@ -1162,13 +1162,13 @@ child {
   }
 };
 \begin{pgfonlayer}{background}
-\fill[red,opacity=1] \convexpath{21,34,31,30,28,26,24,22}{24pt};
-\fill[blue,opacity=1] \convexpath{21,34,22}{16pt};
-\fill[blue,opacity=1] \convexpath{24, 33}{16pt};
-\fill[blue,opacity=1] \convexpath{26, 32}{16pt};
-\fill[blue,opacity=1] \convexpath{28, 31}{16pt};
-\fill[blue,opacity=1] \convexpath{30, 30}{16pt}; %TODO: Colors
-\fill[green,opacity=1] \convexpath{21, 34}{8pt}; %TODO: Whole Circle
+\fill[lightred] \convexpath{21,34,31,30,28,26,24,22}{24pt};
+\fill[lightblue,opacity=1] \convexpath{21,34,22}{16pt};
+\fill[lightblue,opacity=1] \convexpath{24, 33}{16pt};
+\fill[lightblue,opacity=1] \convexpath{26, 32}{16pt};
+\fill[lightblue,opacity=1] \convexpath{28, 31}{16pt};
+\fill[lightblue,opacity=1] \convexpath{34, 33, 32, 31, 30, 31}{16pt};
+\fill[lightgreen,opacity=1] \convexpath{21, 34}{8pt};
 \end{pgfonlayer}
 \end{tikzpicture}
 \caption{DDG of the unmemoized $map$ function after the second value was updated to $6$.}
@@ -1272,13 +1272,13 @@ During runtime, we receive the DDG from TBD. Since the DDG of TBD is mutable, we
 
 We introduce a $Node$ class for DDG nodes. This node class holds a stack trace of the corresponding call, the node id and the tag, which holds all properties of the DDG node, including the node type. Also, we introduce an abstract $Edge$ class for DDG edges, referring to a source and a destination node. Subclasses of the $Edge$ class represent different types of edges, like $Control$, $ModWrite$, $ReadWrite$ or $FreeVar$ dependencies. The latter refers to dependencies introduced by free variables bound from an outer scope and also refers the name and values of those variables. 
 
-The $DDG$ class itself includes an [[adj-list]], a set containg all nodes and a reference to the rood node of the DDG. Since the control edges of a DDG form a tree that can be easily traversed in a meaningful order, helper methods to find child nodes and parents regarding control dependencies exist. 
+The $DDG$ class itself includes an adjacency list, a set containg all nodes and a reference to the rood node of the DDG. Since the control edges of a DDG form a tree that can be easily traversed in a meaningful order, helper methods to find child nodes and parents regarding control dependencies exist. 
 
 To ease the traversion of DDGs for processing, a $GraphIterator$ interface was introduced. Also, three implemented iterators are provided: 
 
 \begin{enumerate}
 \item The $DfsIterator$, that iterates over the graph in depth-first order and outputs each node whenever it is visited by the depth-first search. 
-\item The $DfsFirstIterator$, [TODO: Pre-Order might be the correct name?] that iterates over the graph in depth-first order and only outputs the node when it is visited by the depth-first search for the first time.
+\item The $DfsFirstIterator$, that iterates over the graph in depth-first order and only outputs the node when it is visited by the depth-first search for the first time.
 \item The $TopologicalIterator$, that iterates over the graph in depth-first order and only outputs the node when it is visited by the depth-first search for the last time.  
 \end{enumerate}
 
@@ -1298,7 +1298,7 @@ The computation of trace distance is straight forward, as already described in s
 
 Since we have multiple valid definitions of node equality for calculating trace distance, we introduce a wrapper class that extracts the relevant properties from a node and implements the $equals$ and $hashCode$ method based on those properties. We apply this wrapper class to each node before calculating trace distance. This way we can simply rely on Scalas collection libraries.
 
-\section{Output [[Visualization]]}
+\section{Framework Output}
 
 All the data collected from TBD needs to be visualized in a meaningful format. Especially dependencies and the comparison of DDGs can be shown best by using a graphical representation. Also, it has proved useful to automatically aggregate data from multiple tests to generate diagrams. 
 
@@ -1318,7 +1318,7 @@ The drop down list at the top can be used to choose from different runs. The run
 
 Below the DDG, the description of the currently selected node, a read node, is shown. In the first line, we see the call location of the current node, including method name, file, line number and TBD ID. The method name of $liftedTree1$ indicates that this node was re-executed during change propagation. In the second line we see the node type and the parameters of the call. In this case, the modifiable with the id $d.26$ and the value $null$ was read. Below this information, details regarding the closure can be found. The identifier of the closure is $76$ and there are four variables, $round$, $next$, $hasher$ and $memo$, bound from an outer scope. The colors of the text correspond to the colors of the arrows shown in the visualizer. The last part summarizes variables that are bound from outside the program.  
 
-The button in the top-right corner labeled $L$ dumps a [LaTeX] representation of the current DDG to the standard output stream. The [LaTeX] representation can be compiled using the package [Tikz].
+The button in the top-right corner labeled $L$ dumps a \LaTeX representation of the current DDG to the standard output stream. The \LaTeX representation can be rendered using the latex package \textit{tikz}. 
 
 \subsection{DDG Comparison}
 
@@ -1326,7 +1326,7 @@ For all our types of trace distance except pure trace distance, it is also suita
 
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.7]{screens/DiffView.png}
+\includegraphics[scale=0.5]{screens/DiffView.png}
 \end{center}
 \caption{Screenshot of the DDG comparer}
 \label{fig:ddg_diff_ui}
@@ -1338,45 +1338,63 @@ The GUI contains of two DDG visualizers, where two different DDGs can be selecte
 
 It is possible to export the results of exhaustive tests as summarized table. The table resembles the test cases generated by $TargetedExhaustiveTest$. One axis indicates the index where input updates started, the other indicates the size of the update. The values stored in the table equal the trace distance of the ddg after the update versus before the update and therefore indicate the overhead of change propagation for the given update. 
 
-Table [TODO ref] shows an example of such an exported table for a naive map operation without memoization. Figure [TODO ref] shows the data as two-dimensional plot. We can recognize that not only the size of the update linearly increased the overhead of change propagation, but also the starting index of the update. Such a result usually indicates that memoization is either missing or not working. 
+Table \ref{tbl:introducing_example} shows an example of such an exported table for a naive map operation without memoization. Figure \ref{plot:introducing_example} shows the data as two-dimensional plot. We can recognize that not only the size of the update linearly increased the overhead of change propagation, but also the starting index of the update. Such a result usually indicates that memoization is either missing or not working, since small updates at the beginning of the list have have the same overhead as updates that alter the whole list. This can be seen in the dark red area of the diagram. 
 
 \begin{table}[h]
 \centering
 \begin{tabular}{|l|l|l|l|l|l|l|l|l|l|l|}
 \hline
-\diaghead{\theadfont Index}%
-{Length\\ }{Start\\ }  & 1  & 2  & 3  & 4  & 5  & 6  & 7  & 8  & 9  & 10 \\ \hline
-1    & 42 & 38 & 34 & 30 & 26 & 22 & 18 & 14 & 10 & 6  \\ \hline
-2    & 44 & 40 & 36 & 32 & 28 & 24 & 20 & 16 & 12 &    \\ \hline
-3    & 46 & 42 & 38 & 34 & 30 & 26 & 22 & 18 &    &    \\ \hline
-4    & 48 & 44 & 40 & 36 & 32 & 28 & 24 &    &    &    \\ \hline
-5    & 50 & 46 & 42 & 38 & 34 & 30 &    &    &    &    \\ \hline
-6    & 52 & 48 & 44 & 40 & 36 &    &    &    &    &    \\ \hline
-7    & 54 & 50 & 46 & 42 &    &    &    &    &    &    \\ \hline
-8    & 56 & 52 & 48 &    &    &    &    &    &    &    \\ \hline
-9    & 58 & 54 & 0  &    &    &    &    &    &    &    \\ \hline
-10   & 60 &    &    &    &    &    &    &    &    &    \\ \hline
+\diaghead{\theadfont Diag ColumnmnHead II}%
+{Update\\Length}{Start\\Index} & 1  & 2  & 3  & 4  & 5  & 6  & 7  & 8  & 9  & 10 \\ \hline
+1  & 42 & 38 & 34 & 30 & 26 & 22 & 18 & 14 & 10 & 6  \\ \hline
+2  & 42 & 38 & 34 & 30 & 26 & 22 & 18 & 14 & 10 &    \\ \hline
+3  & 42 & 38 & 34 & 30 & 22 & 22 & 18 & 14 &    &    \\ \hline
+4  & 42 & 38 & 34 & 30 & 26 & 22 & 18 &    &    &    \\ \hline
+5  & 42 & 38 & 34 & 30 & 26 & 22 &    &    &    &    \\ \hline
+6  & 42 & 38 & 34 & 30 & 26 &    &    &    &    &    \\ \hline
+7  & 42 & 38 & 34 & 30 &    &    &    &    &    &    \\ \hline
+8  & 42 & 38 & 34 &    &    &    &    &    &    &    \\ \hline
+9  & 42 & 38 &    &    &    &    &    &    &    &    \\ \hline
+10 & 42 &    &    &    &    &    &    &    &    &    \\ \hline
 \end{tabular}
+\caption{Trace distance induced by different successive updates to the input of unmemoized map, by starting position and update length}
+\label{tbl:introducing_example}
 \end{table}
 
-FUUUUUU LATEX
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=Start Index,ylabel=Update Lentgh]
+\addplot3[surf]
+table{data/simpleMap.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Plot of the data found in table \ref{tbl:introducing_example}.}
+\label{plot:introducing_example}
+\end{figure}
 
 \section{Command Line Interface}
 
-The analysis framework can be controlled using a command line interface. 
+The analyzer framework can be controlled using a command line interface. The interface can be used to select test cases, algorithms to run, or program output types. Also, various parameters can be set. The complete list of parameters can be found in table \ref{tbl:commands}.
 
-[TODO: Either Table or List with arguments]
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|p{10cm}|}
+\hline
+-a NAME  & Selects the program to run during testing. NAME has to refer to the name of the algorithm as given in the $Main$ class of the analyzer framework. \\ \hline
+-i COUNT & Sets the count of elements in the initial input data\\ \hline
+-t NAME  & Selects the test case generator: $random$, $manual$ or $exhaustive$\\ \hline
+-o NAME  & Sets the output format for the results: $visualizer$, $diff$, $latex$ or $exhaustive$\\ \hline
+-r & When set, the testing framework will skip to check whether the program output is correct or not. \\ \hline
+-c COUNT & When $random$ is selected as test generator, sets the count of update rounds to generate. \\ \hline
+-k COUNT & When $random$ is selected as test generator, sets the minimal number of updates per update round. \\ \hline
+-p COUNT & When $random$ is selected as test generator, sets the maximal number of updates per update round. \\ \hline
+\end{tabular}
+\caption{Command line parameters for the analyzer framework.}
+\label{tbl:commands}
+\end{table}
 
-\chapter{Use Case: Quicksort}
-
-
-
-%\begin{tikzpicture}
-%\begin{axis}
-%\addplot3[surf,mesh/ordering=y varies]
-%table[row sep=crcr]{data/simpleMap.dat};
-%\end{axis}
-%\end{tikzpicture}
+\chapter{Evaluation}
 
 
 %\chapter{Use Cases}

@@ -13,6 +13,10 @@
 \pgfplotsset{width=7cm}
 
 
+\definecolor{lightred}{rgb}{1,0.7,0.7}
+\definecolor{lightblue}{rgb}{0.7,0.7,1.0}
+\definecolor{lightgreen}{rgb}{0.7,1,0.7}
+
 \newcommand{\convexpath}[2]{
 [   
     create hullnodes/.code={
@@ -43,7 +47,6 @@
 }
 -- cycle
 }
-
 
 % Node Styles
 \tikzstyle{root}=[draw,fill=gray,rectangle,minimum size=8pt,inner sep=0pt]
