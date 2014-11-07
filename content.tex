@@ -204,7 +204,7 @@ When a memory in a self-adjusting program is allocated, and this allocation call
 
 The solution for this problem is \textit{Keyed Allocation}. Keyed allocation is the task of allocating memory depending on a key, passed to the allocation call. If a key matches the key used in a previous allocation, the old the old memory location is re-used. The old value will be overwritten. Therefore, the change propagation algorithm can use the DDG to identify all parts which have to be updated, but it is not needed to update all references. 
 
-To illustrate the need for this concept, consider a list reverse operation that is implemented recursively. This operation takes an input list $A = (a_1, ..., a_n)$ and creates the reversed output list $A_r = (a_n, ..., a_1)$. Let $r$ be our recursive reverse operation. Whenever $r$ is called, the next pointer of the current element is read. Then, a new element is allocated, with the value of the current element as value and the head of the accumulator list as next element. The new element now is the new head of the accumulator list. Then, $r$ is called with the next element and the new head of the accumulator list. If the end of the list is reached, $r$ is not called again. The first call of $r$ has the head of the input list and a null reference as parameter. 
+To illustrate the need for this concept, consider a list reverse operation that is implemented recursively. This operation takes an input list $A = (a_1, ..., a_n)$ and creates the reversed output list $A_r = (a_n, ..., a_1)$. Let $r$ be our recursive reverse operation. Whenever $r$ is called, the pointer to the next element is read. Then, a new element is allocated, with the value of the current element as value and the head of the accumulator list as next element. The new element now is the new head of the accumulator list. Then, $r$ is called with the next element and the new head of the accumulator list. If the end of the list is reached, $r$ is not called again. The first call of $r$ has the head of the input list and a null reference as parameter. 
 
 The DDG of such a function is shown in Figure \ref{fig:reverse_ddg}. The recursive reverse call is denoted as $r$, with the current element as first, and the head of the accumulator list as second parameter. For clarity, the list elements are denoted as their respective value. The data dependencies between the calls arise from the next-relation of the list elements and the allocated memory location for the accumulator list. 
 
@@ -328,6 +328,7 @@ It is important to realize that trace distance can be independent of memoization
 %[Todo: Maybe two small graphs here, with diffs highlighted.]
 
 \section{A more complex Example}
+\label{sec:more_complex_example}
 
 As already mentioned, the example from Section \ref{sec:simple_example} does not have dependencies between different function calls, and is therefore straight forward to dynamize. We therefore conclude this section with a more complex example. 
 
@@ -503,16 +504,17 @@ During each reduction step, half of the list is eliminated. That implies that fo
 Figure \ref{fig:tree_reduce} shows the DDG of the tree-like reduce operation. It can be recognized that there are no data dependencies that connect all nodes like before. The control dependencies, while still existent, do not cause any problems, since we can utilize memoization to stop change propagation between nodes that feature no data dependencies. 
 
 While the upper bound of $O(log(n))$ holds for updates of values, this bound is not guaranteed for inserts or deletions of whole list elements from the input list. If we remove or add a single element, we change the index of all successive elements. Since we combine each odd element with its successor, changing the index of elements also changes which elements are combined. If now, for example, the first element is removed, we have to re-evaluate the reduction of all successors, which equals an re-evaluation for the entire list. 
-It is possible to circumvent this drawback by using a slightly more complicated approach that involves randomization. This approach is discussed in section \ref{ch:use_cases}. 
-
+It is possible to circumvent this drawback by using a slightly more complicated approach that involves randomization. Basically, elements are no longer combined pairwise, but based on pseudo-random numbers derived from the elements themselves. This way, the control flow is no longer dependent on the elements position in the input. While this approach is important for implementing a useable reduce operation, it is not further required in this writing. 
 \chapter{The TBD Platform}
 \label{ch:tbd_platform}
 
-\textit{TBD}, short for \textit{To Be Determined}, is a platform for self-adjusting computation. TBD was developed in 2014 at Carnegie Mellon University, the source code and documentation of TBD can be found at \url{https://github.com/twmarshall/tbd/}. TBD is implemented in \textit{Scala}, an object-functional language executable on top of the \textit{Java Virtual Machine}. All programs written on top of TBD are self-adjusting and therefore incremental.
+The principles of self-adjusting computation can be applied to functional programs. Es shown by U. Acar et al in \cite{acar2007consistent}, this can be done because functional programs do not introduce cyclic dependencies into the program flow. Whether the concept of self-adjusting computation can also be transferred on imperative programs might have been answered by U. Acar et al in \cite{Acar2008}, where a platform for self-adjusting imperative programs was developed. This was done by providing an interface to necessary primitives like modifiables that supported an imperative program style. Open challenges, however, included providing a simplified interface and a platform that can be broadly used. For overcoming this challenges, \textit{TBD} was introduced. 
+
+\textit{TBD}, short for \textit{To Be Determined}, is a platform for self-adjusting computation. By the time of this writing, TBD is in development since early 2014 at Carnegie Mellon University. The source code and documentation of TBD can be found at \url{https://github.com/twmarshall/tbd/}. TBD is implemented in \textit{Scala}, an object-functional language executable on top of the \textit{Java Virtual Machine}. All programs written on top of TBD are self-adjusting and therefore incremental.
 
 For calculating trace distance, the implementation of the underlying platform is of importance, since it influences how programs are structured and how DDG nodes represent function calls. Therefore, this section discusses how TBD provides self-adjusting computation, how variables are represented, and especially how programs on top of TBD are written. 
 
-\section{Programming Interface - TODO: Maybe higher level e.g. not sacla but tbd commands}
+\section{Programming Interface}
 
 The usage of a special memory model enables TBD to track read-write dependencies. When such a dependency is detected, the code that depends on the changed variable has to be identified and re-evaluated. This requires that the environment of the previous execution is still available. For many programming languages, this task is not straight-forward. Scala, however, supports the usage of \textit{Closures}. Closures are functions that are paired with their enclosing environment. This means that a closure can hold all information necessary to repeat a function evaluation. Furthermore, closures can be treated and passed around like variables. TBD adds a closure to execute to each read, memo or allocation call as parameter. The corresponding function calls the closure during execution. 
 
@@ -719,7 +721,7 @@ Each node in the DDG has to hold enough information to re-evaluate the correspon
 
 \end{itemize}
 
-Those properties, except the id, completely define the state of the called function. With the information available for a node, we can re-execute the corresponding call. Also, for two nodes with equal properties, the corresponding call will execute equally. Child nodes, and therefore subcalls, might execute differently.
+Those properties, except the id, completely define the state of the called function. With the information available for a node, we can re-execute the corresponding call. Also, for two nodes with equal properties, the corresponding call will execute equally. Child nodes, and therefore subcalls, might execute differently. 
 
 The edges of the DDG represent control dependencies. Therefore, the DDG resembles the call tree of a program execution, with the root node as root of the tree. Other dependencies, like data dependencies or allocate-write dependencies, are not explicitely given, but can be inferred from the node properties. Since each node holds the state of the corrsponding function call, the DDG holds all information necassary to reconstruct the whole execution of the program. 
 
@@ -968,11 +970,13 @@ The trace distance of two DDGs basically indicates the number of closures to re-
 As already mentioned, calculating trace distance is straight forward using a greedy matching. We create two sets $A$ and $B$, where $A$ holds all nodes of the first DDG and $B$ holds all nodes of the second DDG. Foreach node in $A$, we search $B$ for an equivalent node. If we find an equivalent node, we remove both nodes from $A$ and $B$, respectively. The count of remeaning nodes, or formally $|A| + |B|$ is the trace distance of the two DDGs. 
 
 The interesting part here, however, is how we define equality of nodes. In this chapter, we explain how it is possible to create multiple, meaningful definitions of equality that result in different meaningful results for trace distance. 
+
+Especially regarding function tags, it has to be noted that comparing two functions for equality is unsolved in general. This problem is also known as \textit{Entscheidungsproblem} as described by A. Church in \cite{church1936note}. However, we can exploit that TBD functions have to be side-effect free, which means that for the same parameters, we will get the same results. Child $read$ calls form an exception, but those are handled by change propagation. 
   
 \section{Types of Trace Distance}
-For checking node equality, we introduce so called \textit{Node Tags}. A node tag is a ordered set of values associated with a single node. When checking nodes for equality, we simply check whether the node tags equal. In the following sections, we will introduce multiple forms of node tags that correspond to different metrics. Node tags usually consist of subsets of the properties introduced while explaining TBD DDGs in section \ref{sec:tbd_ddgs}.
+For checking node equality, we introduce so called \textit{Node Tags}. A node tag is a ordered set of values associated with a single node. When checking nodes for equality, we simply check whether all values in the node tag of both nodes are equal. In the following sections, we will introduce multiple forms of node tags that correspond to different metrics. Node tags usually consist of subsets of the properties introduced while explaining TBD DDGs in section \ref{sec:tbd_ddgs}.
 
-Since tags can also contain values that are read or written in the program, it is important that all data structures used by the program implement a meaningful method to check for equality. Modifiables form an exception and can are compared by comparing the id of the modifiable, regardless of the stored value. 
+Since tags can also contain values that are read or written in the program, it is important that all data structures used by the program implement a meaningful method to check for deep equality. Modifiables form an exception and can are compared by comparing the id of the modifiable, regardless of the stored value. 
 
 \subsection{Pure Trace Distance}
 
@@ -990,7 +994,9 @@ To implement memo-sensitive trace distance, we include all properties introduced
 
 \subsection{Allocation-Sensitive Trace Distance}
 
-Keyed allocation can also greatly impact program performance, as illustrated in section \ref{sec:keyed_alloc}. However, it is possible to measure how well a program would perform if all memory is allocated in a way that no change propagation happens due to re-allocation of memory. We call this form of trace distance \textit{Allocation-Sensiitive Trace Distance}. For allocation-sensitive trace distance, we use node tags without the node id. Additonally, we purge all ids of modifiables from the node tags. A tag for a read node, for example, will then only contain the executed closure and the value of the corresponding mod, but not the id of the mod that has been read. It is important to note that we also remove all modifiables from the argument list of memo nodes. 
+Keyed allocation can also greatly impact program performance, as illustrated in section \ref{sec:keyed_alloc}. However, it is possible to measure how well a program would perform if all memory is allocated in a way that no change propagation happens due to re-allocation of memory. We call this form of trace distance \textit{Allocation-Sensiitive Trace Distance}. For allocation-sensitive trace distance, we use node tags without the node id. Additonally, we ignore all modifiables when comparing node tags. This also includes modifiables contained in the argument list of memo tags and modifiables contained in data structures introduced by the user.
+
+The result is, informally speaking, that we simply ingnore all differences that are induced by re-creation of modifiables.  
 
 For two DDGs, $A$ and $B$, we denote allocation-sensitive trace distance as $\delta_a(A, B)$. A prof of correctness can be found in [TODO: REF].
 
@@ -1239,7 +1245,7 @@ The class $ManualTest$ uses the command line to let the user update the input of
 
 \section{Data Collection}
 
-TBD holds a DDG to control change propagation. It is possible to copy and access the DDG for analytical purposes. However, the DDG introduced by TBD did not contain a compact or unique representation of called functions, as described in section \ref{tbd:sec:tbd_ddgs}. The reason is that for implementing change propagation, closures introduced by the Scala language are sufficient. Those closures, however, can not be tested for equality, since this is a unsolved problem in general. In particular, free variables that are bound by an outer scope are difficult to handle. It might be possible, that two closures are syntactically identical, and the parameters are the same, but the results are still different due to free variables. Such a situation is illustrated in listing \ref{code:bound_free_var}. In the example, the variable $a$ inside the closure passed to the $write$ call is bound to the variable $a$ defined in line $1$. The closure is therfore dependent on the scope that contains the closure. This dependency is semantically identical to a dependency passed to the corresponding function call. 
+TBD holds a DDG to control change propagation. It is possible to copy and access the DDG for analytical purposes. However, the DDG introduced by TBD did not contain a compact or unique representation of called functions, as described in section \ref{tbd:sec:tbd_ddgs}. The reason is that for implementing change propagation, closures introduced by the Scala language are sufficient. Those closures, however, do not contain a definition for equality. In particular, free variables that are bound by an outer scope are difficult to handle. It might be possible, that two closures are syntactically identical, and the parameters are the same, but the results are still different due to free variables. Such a situation is illustrated in listing \ref{code:bound_free_var}. In the example, the variable $a$ inside the closure passed to the $write$ call is bound to the variable $a$ defined in line $1$. The closure is therfore dependent on the scope that contains the closure. This dependency is semantically identical to a dependency passed to the corresponding function call. 
 
 \begin{figure}
 \begin{lstlisting}[frame=single,basicstyle=\ttfamily,numbers=left,mathescape=true]
@@ -1252,9 +1258,9 @@ mod {
 \label{code:bound_free_var}
 \end{figure}
 
-\subsection{[[Collection]] of Function Tags}
+\subsection{Generation of Function Tags}
 
-To gather function tags, we utilize \textit{Scala Macros}. Scala macros are scala programs that are invoked during compile time and can access and modify all information accessible by the compiler. Scala macros get an \textit{Abstract Syntax Tree (AST)} as input, which can be modified during macro execution \cite{TODO} [TODO]. An AST is basically a tree representation of source code, as used internally by the scala compiler. It is important to emphasis that an AST does not represent call trees, but trees of symbols parsed from a source file. In particular, this means that a call to a function that is defined in another file is a leave node in the AST, while an anonymous function is representes as a subtree. 
+To gather function tags, we utilize \textit{Scala Macros}. Scala macros are scala programs that are invoked during compile time and can access and modify all information accessible by the compiler. Scala macros get an \textit{Abstract Syntax Tree (AST)} as input, which can be modified during macro execution \cite{stocker2010scala}. An AST is basically a tree representation of source code, as used internally by the scala compiler. It is important to emphasis that an AST does not represent call trees, but trees of symbols parsed from a source file. In particular, this means that a call to a function that is defined in another file is a leave node in the AST, while an anonymous function is representes as a subtree. 
 
 For collecting function tags, we replace the $read$, $memo$, $mod$ methods and the $apply$ method of $Modizer$ and $Memoizer$ with a macro application. The original implementations of the methods are renamed and marked as private. Also, we add a function tag as additional parameter to the private method. The macro is executed by the compiler for each call of those methods. Therefore, it is possible to generate unique IDs for each call, and therefore for each closure. When called, the macro examines the closure passed to the function, which is available as AST. Using the AST we find all free variables that are bound by the closure from an outer scope. To do so, we traverse the AST of the closure, to locate all references to variables. Then, for each reference, we traverse all parent nodes of the reference in the AST of the closure and check wether the variable is defined there. If so, we can drop the reference. Finally, we generate code that instantiates a list that contains the values of all free variables and their corresponding names as strings. Then, the generated code instantiates a new instance of function tag with the generated ID and the list of free variable and calls the original implementation of the corresponding method with the function tag as additional parameter. The function tag is then attached to the corresponding DDG node by TBD at run time. 
 
@@ -1298,6 +1304,8 @@ The computation of trace distance is straight forward, as already described in s
 
 Since we have multiple valid definitions of node equality for calculating trace distance, we introduce a wrapper class that extracts the relevant properties from a node and implements the $equals$ and $hashCode$ method based on those properties. We apply this wrapper class to each node before calculating trace distance. This way we can simply rely on Scalas collection libraries.
 
+For implementing allocation sensitive trace distance, we introduced a thread static variable\footnote{A variable that is only set for the current thread.} that modifies the $equals$\footnote{A Java or Scala specific method that is available for each object and is used to check whether two objects are equal. The Method can be overloaded.} and $hashCode$\footnote{A Java or Scala specific method that is available for each object and generates a specific hash code for the object. If two objects are equal, their hash cods should also be equal. This Method can be overloaded.} If the variable is set, $equals$ always returns true, and $hashCode$ always returns $0$, resulting in all mods being recognized as equal and effectively ignoring them when comparing objects. 
+
 \section{Framework Output}
 
 All the data collected from TBD needs to be visualized in a meaningful format. Especially dependencies and the comparison of DDGs can be shown best by using a graphical representation. Also, it has proved useful to automatically aggregate data from multiple tests to generate diagrams. 
@@ -1336,9 +1344,9 @@ The GUI contains of two DDG visualizers, where two different DDGs can be selecte
 
 \subsection{Table Export}
 
-It is possible to export the results of exhaustive tests as summarized table. The table resembles the test cases generated by $TargetedExhaustiveTest$. One axis indicates the index where input updates started, the other indicates the size of the update. The values stored in the table equal the trace distance of the ddg after the update versus before the update and therefore indicate the overhead of change propagation for the given update. 
+It is possible to export the results of exhaustive tests as summarized table. The table works best for the test cases generated by $TargetedExhaustiveTest$. One axis indicates the index where input updates started, the other indicates the length of the update. The values stored in the table equal the trace distance of the DDG after the update compared to the DDG before the update and therefore indicate the overhead of change propagation for the given update. 
 
-Table \ref{tbl:introducing_example} shows an example of such an exported table for a naive map operation without memoization. Figure \ref{plot:introducing_example} shows the data as two-dimensional plot. We can recognize that not only the size of the update linearly increased the overhead of change propagation, but also the starting index of the update. Such a result usually indicates that memoization is either missing or not working, since small updates at the beginning of the list have have the same overhead as updates that alter the whole list. This can be seen in the dark red area of the diagram. 
+Table \ref{tbl:introducing_example} shows an example of such an exported table for a naive map operation without memoization an input size of $10$. In this example, We can recognize that not only the size of the update linearly increased the overhead of change propagation, but also the starting index of the update. Such a result usually indicates that memoization is either missing or not working, since small updates at the beginning of the list have have the same overhead as updates that alter the whole list. This can be seen in the dark red area of the diagram. 
 
 \begin{table}[h]
 \centering
@@ -1361,17 +1369,7 @@ Table \ref{tbl:introducing_example} shows an example of such an exported table f
 \label{tbl:introducing_example}
 \end{table}
 
-\begin{figure}
-\centering
-\begin{tikzpicture}
-\begin{axis}[xlabel=Start Index,ylabel=Update Lentgh]
-\addplot3[surf]
-table{data/simpleMap.txt};
-\end{axis}
-\end{tikzpicture}
-\caption{Plot of the data found in table \ref{tbl:introducing_example}.}
-\label{plot:introducing_example}
-\end{figure}
+
 
 \section{Command Line Interface}
 
@@ -1384,17 +1382,181 @@ The analyzer framework can be controlled using a command line interface. The int
 -a NAME  & Selects the program to run during testing. NAME has to refer to the name of the algorithm as given in the $Main$ class of the analyzer framework. \\ \hline
 -i COUNT & Sets the count of elements in the initial input data\\ \hline
 -t NAME  & Selects the test case generator: $random$, $manual$ or $exhaustive$\\ \hline
--o NAME  & Sets the output format for the results: $visualizer$, $diff$, $latex$ or $exhaustive$\\ \hline
+-o NAME  & Sets the output format for the results: $visualizer$, $diff$, $latex$ or $chart2d$\\ \hline
 -r & When set, the testing framework will skip to check whether the program output is correct or not. \\ \hline
 -c COUNT & When $random$ is selected as test generator, sets the count of update rounds to generate. \\ \hline
 -k COUNT & When $random$ is selected as test generator, sets the minimal number of updates per update round. \\ \hline
 -p COUNT & When $random$ is selected as test generator, sets the maximal number of updates per update round. \\ \hline
+-d NAME & When $chart2d$ is selected as output, sets the type of trace distance to use, either $pure$, $memo$ or $alloc$. \\ \hline
 \end{tabular}
 \caption{Command line parameters for the analyzer framework.}
 \label{tbl:commands}
 \end{table}
 
 \chapter{Evaluation}
+
+To evaluate our trace distance algorithm and its implementation, we analyze the algorithms $map$ and $reduce$, that were described in this writing, and a quicksort implementation. We will discuss each implementation where necassary and explain the expected time complexity and behavior, as described by U. Acar in \cite{Acar2005thesis}. Then, we will show that our implementation of trace distance provides equal results. In particular, we will show that allocation sensitive trace distance for an unmemoized algorithm will be similar to pure trace distance for a memoized version of the same algorithm, for the same input mutation. 
+
+As experiment setup, we generate all possible successive updates on a initial input set with size $50$ for the mentioned algorithms. In other words, for each start index $i$ of the input set, we will perform updates of each possible length $u$ on the input set. The results of this exhaustive tests are shown using surface plots, where the $i$ and $u$ axes correspond to the start index and the length of the update, respectively, and the value on the vertical axis to the trace distance. We only include updates of values, but no insertions or deletions into the input set. The reason is that tests cases would get a lot bigger and more complicated. While insertions and deletions are very interesting from the perspective of algorithm design, they are not of particular important for an evaluation of trace distance. 
+
+\section{Map}
+
+The unmemoized and memoized versions of $map$ have been discussed throughly in section \ref{sec:tbd_basic_example} and section \ref{sec:tbd_basic_example}. For an unmenoized version of $map$, we expect a change propagation overhead that depends not only on the update size, but also on the starting position of the update, since $map$ will also be executed for all successive elements. Formally, that means that if the element with index $i$ was updated, change propagation overhead will be at least as high as for an update of size $n-i$, where $n$ denotes the input size. A plot using pure trace distance can be seen in plot \ref{plot:unmemoized_map_pure}. We can see that even for small updates, we have high overhead, depending on the position of the update. 
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
+\addplot3[surf]
+table{data/MapPure.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Pure trace distance for updates of a unmemoized version of map. $i$ corrspods to the start update, $u$ to the length of the update.}
+\label{plot:unmemoized_map_pure}
+\end{figure}
+
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
+\addplot3[surf]
+table{data/MemoMapPure.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Pure trace distance for updates of a memoized version of map.}
+\label{plot:memoized_map_pure}
+\end{figure}
+
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_a$]
+\addplot3[surf]
+table{data/MapAlloc.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Allocation sensitivie trace distance for updates of a unmemoized version of map.}
+\label{plot:unmemoized_map_alloc}
+\end{figure}
+
+For the memoized version of $map$, we expect a change propagation overhead that is solely dependant on the update size. In particular, the overhead is independant of the update position. We can see this behavior in plot \ref{plot:memoized_map_pure}, that was generated from runs of the memoized version of $map$ using pure trace distance. If we apply allocation sensitive trace distance to the unmemoized version of $map$, we get similar results, as illustrated in plot \ref{plot:memoized_map_pure}. The trace distance for each run is about on third larger for the memoized version. The reason is that the memoized version has additional memo nodes in the DDG, which are also counted. 
+
+We can therefore say that in this example, allocation sensitive trace distance successfully predicted how our unmemoized $map$ algorithm would perform if it was memoized and all allocations were optimal. Memoization alone is sufficient for implementing an efficient map, since it will stop change propagation before mods are re-created. 
+
+\section{Linear Reduce}
+
+For reduce, we discussed a linear naive version and a tree-like version in theory in section \ref{sec:more_complex_example}. We did not, however, discuss reduce as a TBD program. A recursive implementation of a linear reduce can be seen in figure \ref{code:linear_reduce}. We create a function, $linearReduce$, that allocates the modifiable for the result of the reduce operation and calls a recursive, internal reduce function, $linearReduceInternal$ for the head of the list. The function $linearReduce$ accepts two parameters, a function parameter that combines two values to some output value, and a mod holding an intial value. The function $linearReduceInternal$ also accepts the function parameter, and also a modifiable holding the result of previous reduce operations. If we reach the end of the list, this preivious result is written as final result. If there are still elements left, the current element is combined with the previous result and the function is called for the next element. 
+
+
+\begin{figure}
+\begin{lstlisting}[frame=single,basicstyle=\ttfamily,numbers=left,mathescape=true]
+def linearReduce[OutputElement]
+  (reducer: (Element, OutputElement) => OutputElement, 
+  initialValue: Mod[OutputElement])
+  (implicit c: Context): Mod[OutputElement] = {
+    mod {
+      naiveLinearReduceInternal(reducer, initialValue)
+    }
+}
+
+private def linearReduceInternal[OutputElement]
+  (reducer: (Element, OutputElement) => OutputElement, 
+  previous: Mod[OutputElement])
+  (implicit c: Context): Changeable[OutputElement] = {
+  read(elem) {
+    case null => {
+      read(previous) {
+        write(_)
+      }
+    }
+    case elem => {
+      val akku = mod {
+        read(previous) {
+          case p => write(reducer(elem.value, p))
+        }
+      }
+
+      elem.next.linearReduceInternal(reducer, akku)
+    }
+  }
+}
+\end{lstlisting}
+\caption{A linear reduce function implemented on top of TBD}
+\label{code:linear_reduce}
+\end{figure}
+
+As discussed in chapter \ref{sec:more_complex_example}, we expect a change propagation overhead similar to the overhead of an unmemoized map. Updates that are done close to the beginning of the input list will cause updates for all sucessive list elements. This behavior can also be seen in plot \ref{plot:reduce_pure}. Plot \ref{plot:reduce_pure} shows the pure trace distance for all possible successive updates for this function. As already discussed, this behavior can not be avoided using memoization. A similar result result can also be seen in plot \ref{plot:reduce_alloc}, generated using allocation sensitive trace distance. The change propagation overhead is smaller for small updates, since some updates to mod and read nodes can be omitted using memoization and keyed allocation. This, however, does not change asymptotic time complexity and introduces a lot of overhead due to additional memo nodes. We construct a memoized version by placing a $memo$ call before the current element is read in line $14$ and by supplying the key of the element as key to the $mod$ function in line $21$. A plot of pure trace distance for the version including memoization and keyed allocation can be found in figure \ref{plot:memo_reduce_pure}. The trace distance for a complete update of the input is higher, since the DDG now contains additional memo nodes. Aside from that, the results for allocation sensitive trace distance and a non-memoized version and pure trace distance of a version with keyed allocation and memoization are similar. 
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
+\addplot3[surf]
+table{data/LinearReducePure.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Pure trace distance for updates of a linar form of reduce.}
+\label{plot:reduce_pure}
+\end{figure}
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
+\addplot3[surf]
+table{data/LinearReduceAlloc.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Allocation sensitive trace distance for updates of a linar form of reduce.}
+\label{plot:reduce_alloc}
+\end{figure}
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
+\addplot3[surf]
+table{data/MemoLinearReducePure.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Pure trace distance for updates of a linar form of reduce with memoization and keyed allocation.}
+\label{plot:memo_reduce_pure}
+\end{figure}
+
+\section{Tree-Like-Reduce}
+
+We further discussed a simplified tree-like reduce in section \ref{sec:more_complex_example}. 
+
+\section{Sort}
+
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
+\addplot3[surf]
+table{data/QuicksortPure.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Pure trace distance for updates of a quicksort.}
+\label{plot:quicksort_pure}
+\end{figure}
+
+
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
+\addplot3[surf]
+table{data/QuicksortAlloc.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Pure allocation sensitive distance for updates of a quicksort.}
+\label{plot:quicksort_alloc}
+\end{figure}
 
 
 %\chapter{Use Cases}

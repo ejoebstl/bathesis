@@ -4,9 +4,26 @@
 \addchap{Appendix}	% english style
 
 
-\section{Proofs of Correctness}
-\label{app:proofs}
+\section{Evaluation Data}
+\label{app:tests}
+
+The data for the evaluation was generated using the commands in listing \ref{eval_commands} using the discussed analyzer framework. 
+
+\begin{figure}
+\begin{lstlisting}[frame=single,basicstyle=\ttfamily]
+#Unmemoized map with allocation sensitive trace distance. 
+bin/visualization.sh -i 100 -r -a snmap -o chart2d -t exhaustive -d alloc > analysisOutput/MapAlloc.txt
+#Unmemoized map with pure trace distance. 
+bin/visualization.sh -i 100 -r -a snmap -o chart2d -t exhaustive -d pure > analysisOutput/MapPure.txt
+#Memoized map with allocation sensitive trace distance. 
+bin/visualization.sh -i 100 -r -a smmap -o chart2d -t exhaustive -d alloc > analysisOutput/MemoMapAlloc.txt
+#Memoized map with pure trace distance. 
+bin/visualization.sh -i 100 -r -a smmap -o chart2d -t exhaustive -d pure > analysisOutput/MemoMapPure.txt
 		
-%\setcounter{figure}{0}
+\end{lstlisting}
+\caption{Commands used to generate the data used for evaluation}
+\label{code:eval_commands}
+\end{figure}
+
 
 
