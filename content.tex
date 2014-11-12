@@ -324,9 +324,6 @@ If we consult our simple map example with two executions that only differ in one
 
 It is important to realize that trace distance can be independent of memoization. The reason for this is that function calls that are not memoized can still be equal, due to having equal function arguments. Therefore, the memoized and unmemoized versions of map have equal trace distance for each pair of executions, even though change propagation times differ heavily.
 
-
-%[Todo: Maybe two small graphs here, with diffs highlighted.]
-
 \section{A more complex Example}
 \label{sec:more_complex_example}
 
@@ -991,20 +988,17 @@ Pure trace distance is useful for comparing two versions of a program and to inv
 
 For two DDGs $A$ and $B$, let $\delta_p'(A, B)$ be the count of nodes that were re-executed or deleted by TBD when transforming DDG $A$ into DDG $B$. We show that $\delta_p'(A, B)$ $=$ $\delta_p(A, B)$. 
 
-\begin{lemma}
-$\delta_p'(A, B)$ $<=$ $\delta_p(A, B)$
+\begin{lemma}[$\delta_p'(A, B)$ $\le$ $\delta_p(A, B)$]
+Proof: Each node re-executed by TBD is assigned a new ID. At least, all nodes with a new ID are counted. Therefore, $\delta_p'(A, B)$ $\le$ $\delta_p(A, B)$ holds.
 \end{lemma}
-Proof: Each node re-executed by TBD is assigned a new ID. At least, all nodes with a new ID are counted. Therefore, $\delta_p'(A, B)$ $<=$ $\delta_p(A, B)$ holds.
 
-\begin{lemma}
-$\delta_p'(A, B)$ $>=$ $\delta_p(A, B)$
+\begin{lemma}[$\delta_p'(A, B)$ $\ge$ $\delta_p(A, B)$]
+Proof: The trace distance algorith greedily removes all nodes with equal ids from both DDGs and counts all nodes with new ID's at most. Only re-executed nodes get new IDs. Therefore, $\delta_p'(A, B)$ $\ge$ $\delta_p(A, B)$.
 \end{lemma} 
-Proof: The trace distance algorith greedily removes all nodes with equal ids from both DDGs and counts all nodes with new ID's at most. Only re-executed nodes get new IDs. Therefore, $\delta_p'(A, B)$ $>=$ $\delta_p(A, B)$.
 
-\begin{theorem}
-$\delta_p'(A, B)$ $==$ $\delta_p(A, B)$
+\begin{theorem}[$\delta_p'(A, B)$ $=$ $\delta_p(A, B)$]
+Proof: From $\delta_p'(A, B)$ $\ge$ $\delta_p(A, B)$ and $\delta_p'(A, B)$ $\le$ $\delta_p(A, B)$ we conclude $\delta_p'(A, B)$ $=$ $\delta_p(A, B)$ 
 \end{theorem}
-Proof: From $\delta_p'(A, B)$ $>=$ $\delta_p(A, B)$ and $\delta_p'(A, B)$ $<=$ $\delta_p(A, B)$ we conclude $\delta_p'(A, B)$ $=$ $\delta_p(A, B)$ 
 
 
 \subsection{Memo-Sensitive Trace Distnace}
@@ -1016,39 +1010,32 @@ To implement memo-sensitive trace distance, we include all properties introduced
 \subsubsection{Correctness}
 
 \begin{definition}[Change propagation algorithm]
-Let $\Sigma$ be a change propagation algorithm. A change propagation algorithm may only re-order, re-execute or delete nodes from an existing trace.
+Let $\Sigma$ be a change propagation algorithm. A change propagation algorithm may only re-order\footnote{in TBD, re-ordering happens when a memo-match occours and a node is attached to another subtree}, re-execute or delete nodes from an existing trace.
 \end{definition}
 
 \begin{definition}[Memoizing change propagation algorithm]
-Let $\Sigma_m$ be a memoizing change propagation algorithm. This means that $\Sigma_m$ memoizes all nodes and only re-evaluates nodes that have to be re-evaluated.  
+Let $\Sigma_m$ be a memoizing change propagation algorithm. This means that $\Sigma_m$ memoizes all nodes and only re-evaluates nodes that have to be re-evaluated and automatically holds change propagation where necassary. 
 \end{definition}
 
-For two DDGs $A$ and $B$, let $\delta_m'(A, B)$ be the count of nodes that were re-executed or deleted by a memoizing optimal change propagation algorithm $\Sigma_m$ when transforming DDG $A$ into DDG $B$. We show that $\delta_m'(A, B)$ $=$ $\delta_p(A, B)$. 
+For two DDGs $A$ and $B$, let $\delta_m'(A, B)$ be the count of nodes that were re-executed or deleted by a memoizing change propagation algorithm $\Sigma_m$ when transforming DDG $A$ into DDG $B$. We show that $\delta_m'(A, B)$ $=$ $\delta_p(A, B)$. 
 
-\begin{lemma}
+\begin{lemma}[Two equal trace nodes execute equally and make equal sub-calls.]
 \label{lem:node_determinism}
-Two equal trace nodes execute equally and make equal sub-calls.
-\end{lemma}
-
 Proof: If the nodes are equal, they refer to same TBD function, read, write, mod, memo or par. These functions are guaranteed to execute the same way if the input parameters are equal. Also, the tag of the node contains all parameters the function depends on, including free variables and higher order functions. Nodes are only equal if the tag equals. Accessing static or class variables from inside function parameters can be ruled out due to the constraints listed in chapter \ref{ch:tbd_platform}.
-
-\begin{lemma}
-$\delta_m'(A, B)$ $>=$ $\delta_m(A, B)$
 \end{lemma}
 
+\begin{lemma}[$\delta_m'(A, B)$ $\ge$ $\delta_m(A, B)$]
 Proof: Let $Y$ be the set off all nodes of $A$ without an equal node in $B$. Let $R$ be the set of all nodes of $B$ without an equal node in $A$. That means, that for all nodes in $Y$ there is no corresponding node with an equal tag in DDG $B$ and vice versa. Therefore, we have to at least re-evaluate all nodes within $Y$ and $R$, where the removal of a node counts as re-evaluation. 
-
-\begin{lemma}
-$\delta_m'(A, B)$ $<=$ $\delta_m(A, B)$
 \end{lemma}
 
-Proof: Let $T$ be the set of all nodes in $A$ and that have an equal node in $B$ and vice versa. Lets assume that the is a node $v$ in $T$ which is re-executed during change propagation by the memoizing optimal algorithm $\Sigma*$. Due to lemma \ref{lem:node_determinism} we know that this re-execution was unnecessary. Therefore, our assumption was wrong and we know now that an memoizing optimal algorithm $\Sigma*$ does not re-evaluate nodes in $A$ and that have an equal node in $B$ and vice versa. From this it follows that only nodes that do not exist in both DDGs have to be re-evaluated. Since the count of all nodes that do not exist in both DDGs equals $\delta_m(A, B)$, we know that the count of re-evaluated nodes, or $\delta_m'(A, B)$ is lower or equal $\delta_m(A, B)$. 
 
-\begin{theorem}
-$\delta_m'(A, B)$ $=$ $\delta_m(A, B)$
+\begin{lemma}[$\delta_m'(A, B)$ $\le$ $\delta_m(A, B)$]
+Proof: Let $T$ be the set of all nodes in $A$ and that have an equal node in $B$ and vice versa. Lets assume that the is a node $v$ in $T$ which is re-executed during change propagation by the memoizing optimal algorithm $\Sigma*$. Due to lemma \ref{lem:node_determinism} we know that this re-execution was unnecessary. Therefore, our assumption was wrong and we know now that an memoizing algorithm $\Sigma*$ does not re-evaluate nodes in $A$ and that have an equal node in $B$ and vice versa. From this it follows that only nodes that do not exist in both DDGs have to be re-evaluated. Since the count of all nodes that do not exist in both DDGs equals $\delta_m(A, B)$, we know that the count of re-evaluated nodes, or $\delta_m'(A, B)$ is lower or equal $\delta_m(A, B)$. 
+\end{lemma}
+
+\begin{theorem}[$\delta_m'(A, B)$ $=$ $\delta_m(A, B)$]
+Proof: From $\delta_m'(A, B)$ $\ge$ $\delta_m(A, B)$ and $\delta_m'(A, B)$ $\le$ $\delta_m(A, B)$ we conclude $\delta_m'(A, B)$ $=$ $\delta_m(A, B)$ 
 \end{theorem}
-Proof: From $\delta_m'(A, B)$ $>=$ $\delta_m(A, B)$ and $\delta_m'(A, B)$ $<=$ $\delta_m(A, B)$ we conclude $\delta_m'(A, B)$ $=$ $\delta_m(A, B)$ 
-
 
 \subsection{Allocation-Sensitive Trace Distance}
 
@@ -1056,7 +1043,31 @@ Keyed allocation can also greatly impact program performance, as illustrated in 
 
 The result is, informally speaking, that we simply ingnore all differences that are induced by re-creation of modifiables.  
 
-For two DDGs, $A$ and $B$, we denote allocation-sensitive trace distance as $\delta_a(A, B)$. A prof of correctness can be found in [TODO: REF].
+For two DDGs, $A$ and $B$, we denote allocation-sensitive trace distance as $\delta_a(A, B)$. 
+
+\subsection{Correctness}
+
+\begin{definition}[Allocating change propagation algorithm]
+Let $\Sigma_a$ be an allocating change propagation algorithm. This means that $\Sigma_a$ chooses memory locations for modifiables in a way that there are no further invokations of change propagation due to the memory location. Also, $\Sigma_a$ memoizes all nodes like $\Sigma_m$. 
+\end{definition}
+
+\begin{lemma}[$\delta_a(A, B)$ $\le$ $\delta_m(A, B)$]
+Proof: Since an allocating change propagating algorithm also memoizes each node line a memoizing change propagation algorithm, those nodes are also included in the matching. Since they are included in the matching, they are not counted by both algorithms. Therefore, allocation sensitive trace distance is lower or equal memoized trace distance for all pairs of DDGs $A$ and $B$. This also implies that the nodes counted by allocation sensitive trace distance are a subset of the nodes counted by memo-sensitive trace distance. 
+\end{lemma}
+
+For two DDGs $A$ and $B$, let $\delta_a'(A, B)$ be the count of nodes that were re-executed or deleted by an allocating change propagation algorithm $\Sigma_m$ when transforming DDG $A$ into DDG $B$. We show that $\delta_a'(A, B)$ $=$ $\delta_a(A, B)$. 
+
+\begin{lemma}[$\delta_a'(A, B)$ $\le$ $\delta_a(A, B)$]
+Proof: Assume there is a pair of nodes $(a, b)$ from $A$ and $B$ respectively, that is matched by allocation-sensitive trace distance but got re-executed. Since allocation-sensitive trace distance removes all references to modifiables from the node tags, and the tags of $a$ and $b$ were otherwise equal, the re-execution must have been induced by a difference in the location of a modifiable. This leads to a conflict with our assumption. Therefore, there exists no pair of nodes $(a, b)$ that is matched by allocation sensitive trace distance but getting re-executed, leading to the conclusion that the count of re-executed nodes is always lower or equal than allocation-sensitive trace distance. 
+\end{lemma}
+
+\begin{lemma}[$\delta_a'(A, B)$ $\ge$ $\delta_a(A, B)$]
+Proof: Assume there is a pair of nodes $(a, b)$ from $A$ and $B$ respectively, that is not matched by allocation-sensitive trace distance but did not got re-executed. This means that the node tag is different and therefore, the parameters the node depend on have changed. A change propagation algorithm has to update the node, even when memoized. Therefore, the count of re-executed nodes is always greater or equal than allocation-sensitive trace distance. 
+\end{lemma}
+
+\begin{theorem}[$\delta_a'(A, B)$ $=$ $\delta_a(A, B)$]
+Proof: From $\delta_a'(A, B)$ $\ge$ $\delta_a(A, B)$ and $\delta_a'(A, B)$ $\le$ $\delta_a(A, B)$ we conclude $\delta_a'(A, B)$ $=$ $\delta_a(A, B)$ 
+\end{theorem}
 
 \section{Example: Different Trace Distances for Map}
 
@@ -1244,7 +1255,7 @@ Note that it is not meaningful to introduce keyed allocation in this example. Pu
 
 It should also be noted that it is dangerous to generalize from one example or run to all applications of a certain program or function. Consulting trace distances, however, might be very useful for finding potential performance bottlenecks for certain inputs. 
 
-We will discuss the application of trace distance for more complex examples in [TODO: REF]. 
+We will discuss the application of trace distance for more complex examples in \ref{ch:eval}.
 
 \chapter{Implementation}
 
@@ -1260,7 +1271,7 @@ To test the concept of trace distance, we created an analyzer framework that is 
 
 It is important to note that in the current state, the framework uses ordered sets implemented as linked lists as input.
 
-\section{Input Generation and [[Testee]] Interface}
+\section{Input Generation and Test Program Interface}
 
 For enabling flexible input generation during tests, an interface for test case generators has been implemented. The architecture of this interface, including existing test case generators, can be seen in \ref{fig:input_generation}. The figure also illustrates the interface that invokes programs that should be tested. 
 
@@ -1452,6 +1463,7 @@ The analyzer framework can be controlled using a command line interface. The int
 \end{table}
 
 \chapter{Evaluation}
+\label{ch:eval}
 
 To evaluate our trace distance algorithm and its implementation, we analyze the algorithms $map$ and $reduce$, that were described in this writing, and a quicksort implementation. We will discuss each implementation, since trace distance and change propagation overhead are dependent on implementation-sepecific decisions. An example would be allocating a modifiable inside a read, where it is avoidable, or reading variables before they are actually needed. For each program, we will explain the expected time complexity and behavior, as described by U. Acar in \cite{Acar2005thesis}. Then, we will show that our implementation of trace distance provides equal results. In particular, we will show that allocation sensitive trace distance for an unmemoized algorithm will be similar to pure trace distance for a memoized version of the same algorithm, for the same input mutation. 
 
