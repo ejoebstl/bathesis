@@ -648,6 +648,7 @@ When executing this program, each function executes the corresponding closure be
 If an input value of this function changes, TBD will take care to re-evaluate the corresponding $read$ call. The $read$ call invokes its respective closure again. All function calls in the closure will be executed. Finally, the write will be re-executed and the result will be updated. If the $add$ function is called by another function during change propagation, the $memo$ call checks for memo matches and halts change propagation if the function is called with the same parameters as before. 
 
 \subsection{Map: A more complex example}
+\label{sec:tbd_memo_map}
 
 To wrap up this section, we revisit the map example introduced in section \ref{sec:simple_example} and theoretically discussed in section \ref{sec:ddg}. Since the map operator operates on lists, we define a list element class, $SimpleList$, that is shown in \ref{fig:simple_list_uml}. The $SimpleList$ class represents a single list element. Each instance has a member that points to the next element of the list, and a member that holds the value. Like the member $next$, the head of a list is represented by an instance of $Mod[SimpleListElement[T]]$. The last element in the list is represented by a modifiable that holds a null reference.  
 
@@ -986,11 +987,68 @@ Since pure trace distance basically counts all nodes that were removed or added 
 
 Pure trace distance is useful for comparing two versions of a program and to investigate which one performed better under certain loads.
 
+\subsubsection{Correctness} 
+
+For two DDGs $A$ and $B$, let $\delta_p'(A, B)$ be the count of nodes that were re-executed or deleted by TBD when transforming DDG $A$ into DDG $B$. We show that $\delta_p'(A, B)$ $=$ $\delta_p(A, B)$. 
+
+\begin{lemma}
+$\delta_p'(A, B)$ $<=$ $\delta_p(A, B)$
+\end{lemma}
+Proof: Each node re-executed by TBD is assigned a new ID. At least, all nodes with a new ID are counted. Therefore, $\delta_p'(A, B)$ $<=$ $\delta_p(A, B)$ holds.
+
+\begin{lemma}
+$\delta_p'(A, B)$ $>=$ $\delta_p(A, B)$
+\end{lemma} 
+Proof: The trace distance algorith greedily removes all nodes with equal ids from both DDGs and counts all nodes with new ID's at most. Only re-executed nodes get new IDs. Therefore, $\delta_p'(A, B)$ $>=$ $\delta_p(A, B)$.
+
+\begin{theorem}
+$\delta_p'(A, B)$ $==$ $\delta_p(A, B)$
+\end{theorem}
+Proof: From $\delta_p'(A, B)$ $>=$ $\delta_p(A, B)$ and $\delta_p'(A, B)$ $<=$ $\delta_p(A, B)$ we conclude $\delta_p'(A, B)$ $=$ $\delta_p(A, B)$ 
+
+
 \subsection{Memo-Sensitive Trace Distnace}
 
 An interesting aspect of a self-adjusting program is how well memoization was handled. For this purpose, we introduce \textit{Memo-Sensitivie Trace Distance}. For two DDGs, $A$ and $B$, we denote memo-sensitive trace distance as $\delta_m(A, B)$.
 
-To implement memo-sensitive trace distance, we include all properties introduced in section \ref{sec:tbd_ddgs} except the node id into the tag. This is done because, as mentioned before, the properties of each node completely define the state of the corresponding call. If all properties of two nodes equal, the corresponding functions will execute equally. Those nodes are not counted by memo-sensitive trace distance, since their re-evaluation can be omitted using memoization. In other words, memo-sensitive trace distance indicates how well a program could perform, if all calls were memoized. A proof of correctness can be found in [TODO: REF].
+To implement memo-sensitive trace distance, we include all properties introduced in section \ref{sec:tbd_ddgs} except the node id into the tag. This is done because, as mentioned before, the properties of each node completely define the state of the corresponding call. If all properties of two nodes equal, the corresponding functions will execute equally. Those nodes are not counted by memo-sensitive trace distance, since their re-evaluation can be omitted using memoization. In other words, memo-sensitive trace distance indicates how well a program could perform, if all calls were memoized. 
+
+\subsubsection{Correctness}
+
+\begin{definition}[Change propagation algorithm]
+Let $\Sigma$ be a change propagation algorithm. A change propagation algorithm may only re-order, re-execute or delete nodes from an existing trace.
+\end{definition}
+
+\begin{definition}[Memoizing change propagation algorithm]
+Let $\Sigma_m$ be a memoizing change propagation algorithm. This means that $\Sigma_m$ memoizes all nodes and only re-evaluates nodes that have to be re-evaluated.  
+\end{definition}
+
+For two DDGs $A$ and $B$, let $\delta_m'(A, B)$ be the count of nodes that were re-executed or deleted by a memoizing optimal change propagation algorithm $\Sigma_m$ when transforming DDG $A$ into DDG $B$. We show that $\delta_m'(A, B)$ $=$ $\delta_p(A, B)$. 
+
+\begin{lemma}
+\label{lem:node_determinism}
+Two equal trace nodes execute equally and make equal sub-calls.
+\end{lemma}
+
+Proof: If the nodes are equal, they refer to same TBD function, read, write, mod, memo or par. These functions are guaranteed to execute the same way if the input parameters are equal. Also, the tag of the node contains all parameters the function depends on, including free variables and higher order functions. Nodes are only equal if the tag equals. Accessing static or class variables from inside function parameters can be ruled out due to the constraints listed in chapter \ref{ch:tbd_platform}.
+
+\begin{lemma}
+$\delta_m'(A, B)$ $>=$ $\delta_m(A, B)$
+\end{lemma}
+
+Proof: Let $Y$ be the set off all nodes of $A$ without an equal node in $B$. Let $R$ be the set of all nodes of $B$ without an equal node in $A$. That means, that for all nodes in $Y$ there is no corresponding node with an equal tag in DDG $B$ and vice versa. Therefore, we have to at least re-evaluate all nodes within $Y$ and $R$, where the removal of a node counts as re-evaluation. 
+
+\begin{lemma}
+$\delta_m'(A, B)$ $<=$ $\delta_m(A, B)$
+\end{lemma}
+
+Proof: Let $T$ be the set of all nodes in $A$ and that have an equal node in $B$ and vice versa. Lets assume that the is a node $v$ in $T$ which is re-executed during change propagation by the memoizing optimal algorithm $\Sigma*$. Due to lemma \ref{lem:node_determinism} we know that this re-execution was unnecessary. Therefore, our assumption was wrong and we know now that an memoizing optimal algorithm $\Sigma*$ does not re-evaluate nodes in $A$ and that have an equal node in $B$ and vice versa. From this it follows that only nodes that do not exist in both DDGs have to be re-evaluated. Since the count of all nodes that do not exist in both DDGs equals $\delta_m(A, B)$, we know that the count of re-evaluated nodes, or $\delta_m'(A, B)$ is lower or equal $\delta_m(A, B)$. 
+
+\begin{theorem}
+$\delta_m'(A, B)$ $=$ $\delta_m(A, B)$
+\end{theorem}
+Proof: From $\delta_m'(A, B)$ $>=$ $\delta_m(A, B)$ and $\delta_m'(A, B)$ $<=$ $\delta_m(A, B)$ we conclude $\delta_m'(A, B)$ $=$ $\delta_m(A, B)$ 
+
 
 \subsection{Allocation-Sensitive Trace Distance}
 
@@ -1395,9 +1453,9 @@ The analyzer framework can be controlled using a command line interface. The int
 
 \chapter{Evaluation}
 
-To evaluate our trace distance algorithm and its implementation, we analyze the algorithms $map$ and $reduce$, that were described in this writing, and a quicksort implementation. We will discuss each implementation where necassary and explain the expected time complexity and behavior, as described by U. Acar in \cite{Acar2005thesis}. Then, we will show that our implementation of trace distance provides equal results. In particular, we will show that allocation sensitive trace distance for an unmemoized algorithm will be similar to pure trace distance for a memoized version of the same algorithm, for the same input mutation. 
+To evaluate our trace distance algorithm and its implementation, we analyze the algorithms $map$ and $reduce$, that were described in this writing, and a quicksort implementation. We will discuss each implementation, since trace distance and change propagation overhead are dependent on implementation-sepecific decisions. An example would be allocating a modifiable inside a read, where it is avoidable, or reading variables before they are actually needed. For each program, we will explain the expected time complexity and behavior, as described by U. Acar in \cite{Acar2005thesis}. Then, we will show that our implementation of trace distance provides equal results. In particular, we will show that allocation sensitive trace distance for an unmemoized algorithm will be similar to pure trace distance for a memoized version of the same algorithm, for the same input mutation. 
 
-As experiment setup, we generate all possible successive updates on a initial input set with size $50$ for the mentioned algorithms. In other words, for each start index $i$ of the input set, we will perform updates of each possible length $u$ on the input set. The results of this exhaustive tests are shown using surface plots, where the $i$ and $u$ axes correspond to the start index and the length of the update, respectively, and the value on the vertical axis to the trace distance. We only include updates of values, but no insertions or deletions into the input set. The reason is that tests cases would get a lot bigger and more complicated. While insertions and deletions are very interesting from the perspective of algorithm design, they are not of particular important for an evaluation of trace distance. 
+As experiment setup, we generate random updates on all possible successive positions on a initial input set with size $50$ for the mentioned algorithms. In other words, for each start index $i$ of the input set, we will perform random updates of each possible length $u$ on the input set. The results of this exhaustive tests are shown using surface plots, where the $i$ and $u$ axes correspond to the start index and the length of the update, respectively, and the value on the vertical axis to the trace distance. We only include updates of values, but no insertions or deletions into the input set. The reason is that tests cases would get a lot bigger and more complicated. While insertions and deletions are very interesting from the perspective of algorithm design, they are not of particular important for an evaluation of trace distance. Each test run is repeated five times, the results are averaged. 
 
 \section{Map}
 
@@ -1504,7 +1562,7 @@ table{data/LinearReducePure.txt};
 \begin{figure}
 \centering
 \begin{tikzpicture}
-\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_a$]
 \addplot3[surf]
 table{data/LinearReduceAlloc.txt};
 \end{axis}
@@ -1527,10 +1585,198 @@ table{data/MemoLinearReducePure.txt};
 
 \section{Tree-Like-Reduce}
 
-We further discussed a simplified tree-like reduce in section \ref{sec:more_complex_example}. 
+Further, a non-randomized tree-like reduce was theoretically discussed in section \ref{sec:more_complex_example}. An implementation of the tree-like reduce can be seen in listing \ref{code:tree_reduce}. We defined a helper function, $reducePairs$, that reads two elements from a list and conbines them to one element using the supplied function. If applicable, the function calls itself recursively for the next element. When finished, the function returns a list that contains all combined elements. For an input list, $reducePairs$ is called by the $treeReduceInternal$ method, which also calls itself again with the result. The $treeReduceInternal$ method continues recursively until the input list is reduced to a single element. Then, the value of that single element is read and returned. The method $treeReduce$ only allocates the memory for the result and invokes $treeReduceInternal$.
 
-\section{Sort}
+\begin{figure}
+\begin{lstlisting}[frame=single,basicstyle=\ttfamily,numbers=left,mathescape=true]
+def treeReduce
+  (reducer: (Element, Element) => Element)
+  (implicit c: Context): Mod[Element] = {
+    mod {
+      treeReduceInternal(reducer)
+    }
+}
 
+def treeReduceInternal
+  (reducer: (Element, Element) => Element)
+  (implicit c: Context): Changeable[Element] = {
+    read(elem) {
+      case e => {
+        read(e.next) {
+          case null => write(e.value)
+          case next => {
+            val newList = mod {
+              elem.reducePairs(reducer)
+            }
+            newList.treeReduceInternal(reducer)
+          }
+        }
+      }
+    }
+}
+
+def reducePairs
+  (reducer: (Element, Element) => Element)
+  (implicit c: Context): Changeable[SimpleList[Element]] = {
+    read(elem) {
+      case null => write(null)
+      case elem => {
+        read(elem.next) {
+          case null => write(elem)
+          case next => {
+            val newNext = mod {
+              next.next.reducePairs(reducer)
+            }
+            val newValue = reducer(elem.value, next.value)
+            val newElement = new SimpleList[Element]
+              (newValue, elem.key, newNext)
+            write(newElement)
+          }
+        }
+      }
+    }
+}
+
+\end{lstlisting}
+\caption{A tree-like reduce function implemented on top of TBD}
+\label{code:tree_reduce}
+\end{figure}
+
+For this unmenoized version, we expect change propagation overhead of $O(n)$ in the worst case. Like for an unmemoized map, the overhead is dependant on the update position, rather than the length of the update. The reason is that if an an input element to the $reducePairs$ method changes, the corresponding reduced element in the output list changes, too. Since this version does not include any memoization, also all successive calls to $reducePairs$ are also re-executed. We can see that behavior in figure \ref{plot:tree_reduce_pure}, that plots pure trace distance for updates to a unmemoized version of tree-reduce. Like for previous examples, the change propagation time can be very high for small updates, provided they are close to the beginning of the input list. 
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
+\addplot3[surf]
+table{data/TreeReducePure.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Pure trace distance of a tree-like reduce operation.}
+\label{plot:tree_reduce_pure}
+\end{figure}
+
+When we add memoization and keyed allocation to the tree-like reduce operation, we consider the $reducePair$ function as a $map$ operation, that reads two input elements for each output element. We therefore memoize each call to $reducePair$ with the current element as argument. Also, we use the current element as key for allocating the result of the reduce operation. Those operations are very similar to those done with $map$ in section \ref{sec:tbd_memo_map}. Due to this changes, we expect change propagation time to lie in the complexity class of $O(log(n))$, as discussed in section \ref{sec:more_complex_example}. Also we expect change propagation overhead to be only dependent on update size. 
+
+Figure \ref{plot:tree_reduce_alloc} shows the allocation sensitive trace distance for an unmemoized version of tree-reduce. We can clearly see that the trace distance in this example depends on the update size, not the position. This also holds for the memoized version. The plot of pure trace distance for the memoized version with keyed allocation can be seen in figure \ref{plot:memo_tree_reduce_pure}. Both plots equal the results we expected for this program. 
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_a$]
+\addplot3[surf]
+table{data/TreeReduceAlloc.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Allocation sensitive distance of a tree-like reduce operation.}
+\label{plot:tree_reduce_alloc}
+\end{figure}
+
+
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
+\addplot3[surf]
+table{data/MemoTreeReducePure.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Pure distance of a memoized tree-like reduce operation.}
+\label{plot:memo_tree_reduce_pure}
+\end{figure}
+
+\section{Quicksort}
+
+Our final test is an implementation of quicksort on linked list. This implementation works by using the first element of a list as pivot element, then splitting the list in a part greater than, and in a part smaller than the pivot element. The quicksort is called recursively until a single element is reached.
+
+To split a list into two parts, we define a $split$ function that accepts a function parameter that indicates wether an element should be in the first list or the second list. The $split$ function can be seen in listing \ref{code:split_filter}. Internally, the $split$ function uses two applications of a $filter$ function. That function takes a higher order function and returns an ouput list that contains all lists for which the higher order function returned true. Filter uses an internal function $filterInternal$, that is called recursively. It should be noted here that $filter$ and $filterInternal$ already allocate memory for each output before the corresponding input element is read. It might happen that we allocate memory, and do not write that memory until we have discarded a lot of input elements. Due to this property, it is not possible to use keyed allocation, since we do not know a meaningful key where we allocate the memory. There is also no other ways to implement filter, due to the enforcement of TBD that the closure passed to a read has to return an instance of $Changeable$. This means that we are not able to allocate a mod where we write it, since we are not able to return it. 
+
+\begin{figure}
+\begin{lstlisting}[frame=single,basicstyle=\ttfamily,numbers=left,mathescape=true]
+def split
+  (predicate: Element => Boolean)
+  (implicit c: Context):
+    (Mod[SimpleList[Element]], Mod[SimpleList[Element]]) = {
+  (elem.filter(x => predicate(x)), elem.filter(x => !predicate(x)))
+}
+
+def filter
+  (predicate: Element => Boolean)
+  (implicit c: Context):
+    Mod[SimpleList[Element]] = {
+
+  mod {
+    elem.naiveFilterInternal(predicate)
+  }
+}
+
+def filterInternal
+  (predicate: Element => Boolean)
+  (implicit c: Context):
+    Changeable[SimpleList[Element]] = {
+
+  read(elem) {
+    case null => {
+      write(null)
+    }
+    case elem =>
+
+      if(predicate(elem.value)) {
+        val newNext = mod {
+          elem.next.filterInternal(predicate)
+        }
+        write(new SimpleList(elem.value, elem.key, newNext))
+      } else {
+        elem.next.filterInternal(predicate)
+      }
+  }
+}
+
+\end{lstlisting}
+\caption{A split function that splits an input list into two lists using a predicate.}
+\label{code:split_filter}
+\end{figure}
+
+The implementation of quicksort can be seen in listing \ref{code:quicksort}. The $quicksort$ function allocates memory for the first output element and initializes the last element of the list. Then, $quicksortInternal$ is called. The $quicksortInternal$ function is responsible for recursively sorting a linked list and appending the supplied element $tail$ to the list. For each input list, the $quicksortInternal$ function reads the first element of the list and splits the rest of the list in two parts one containing all elements greater, and one containing all elements smaller than the first element. Then, those lists are sorted recursively and concatenated. The part to add to the end of a list is supplied as $tail$ to each recursive call.
+
+\begin{figure}
+\begin{lstlisting}[frame=single,basicstyle=\ttfamily,numbers=left,mathescape=true]
+def quickSort
+  (comperator: (Element, Element) => Boolean)
+  (implicit c: Context): Mod[SimpleList[Element]] = {
+
+    val tail = mod { write[SimpleList[Element]](null) }
+
+    mod {
+      quickSortInternal(comperator, tail)
+    }
+}
+
+def quickSortInternal
+  (comperator: (Element, Element) => Boolean,
+   tail: Mod[SimpleList[Element]])
+  (implicit c: Context): Changeable[SimpleList[Element]] = {
+
+    read(elem) {
+      case null => read(tail) {write(_)}
+      case e => {
+        val (smaller, greater) = {
+          e.next.split(x => comperator(x, e.value))
+        }
+        val greaterSorted = mod { greater.quickSortInternal(comperator, tail) }
+        val middle = mod { write(new SimpleList(e.value, e.key, greaterSorted)) }
+        smaller.quickSortInternal(comperator, middle)
+      }
+    }
+}
+
+\end{lstlisting}
+\caption{A quicksort implementation on top of TBD}
+\label{code:quicksort}
+\end{figure}
+
+For quicksort we expect a time complexity of $O(log(n))$, where $n$ is the length of the input list. This also holds for updates, as we can see in figure \ref{plot:quicksort_pure}. The plot shows pure trace distance for updates on the unmemoized version of quicksort. We can clearly see that the change propagation overhead does not only depend on the input size, but also on the length of the input, which was expected. 
 
 \begin{figure}
 \centering
@@ -1544,19 +1790,40 @@ table{data/QuicksortPure.txt};
 \label{plot:quicksort_pure}
 \end{figure}
 
+U. Acar did a comprehensive analysis of quicksort in \cite{Acar2005thesis}. According to his writing, the expected time complexity for upates at the beginning of the list is within $O(n)$ where $n$ denotes the input size. For updates at uniformly random positions, the expected time complexity is within $O(log(n))$. This leads to the conclusion that for a correctly memoized version, the input position is not going to influence change propagation time if the update is not too close to the beginning of a list. We can see similar results in figure \ref{plot:quicksort_alloc}, that plots allocation sensitvie trace distance for an unmemoized version of quicksort. 
 
+For memoizing quicksort, using a memoized filter function is sufficient. We memoize $filter$ by placing a $memo$ call around the $mod$ call and use the current element as argument to the $memo$ function. Since the $filter$ function has to initialize a memoizer for that purpose, we also have to memoize the first call to $filter$ so the $memoizer$ object does not get re-created. To do so, we place a $memo$ call around the call to $split$ in $quicksortInternal$, with the head of the list to split as argument. Keyed allocation is not possible to apply here, due to the reasons explained above. 
+
+For our memoized implementation, we observe that updates in the beginning of the input list cause a dramatic change of the DDG structure. Informally speaking, the the reason is that the first split will execute differently, thus changing the call tree of the whole program. For updates not at the beginning of the list, however, we observe that only subtrees or parts of subtrees have to be re-executed. 
+
+A plot of pure trace distance for the memoized version of quicksort can be seen in figure \ref{plot:memo_quicksort_pure}. The result is, again, similar to the result given by allocation-sensitive trace distance for the unmemoized version. 
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_a$]
+\addplot3[surf]
+table{data/QuicksortAlloc.txt};
+\end{axis}
+\end{tikzpicture}
+\caption{Allocation sensitive trace distance for updates of a quicksort.}
+\label{plot:quicksort_alloc}
+\end{figure}
 
 \begin{figure}
 \centering
 \begin{tikzpicture}
 \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
 \addplot3[surf]
-table{data/QuicksortAlloc.txt};
+table{data/MemoQuicksortPure.txt};
 \end{axis}
 \end{tikzpicture}
-\caption{Pure allocation sensitive distance for updates of a quicksort.}
-\label{plot:quicksort_alloc}
+\caption{Pure trace distance for updates of a memoized version of quicksort.}
+\label{plot:memo_quicksort_pure}
 \end{figure}
+
+\chapter{Conclusion}
+
 
 
 %\chapter{Use Cases}

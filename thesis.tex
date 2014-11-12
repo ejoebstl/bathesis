@@ -8,10 +8,18 @@
 \usepackage{listings}
 \usetikzlibrary{trees,arrows,positioning, calc, shapes.geometric}
 
+\usepackage{ntheorem}
 \pgfdeclarelayer{background}
 \pgfsetlayers{background,main}
 \pgfplotsset{width=7cm}
 
+%\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{definition-non}{Definition}
+%\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{theorem-non}{Theorem}
+\newtheorem{lemma}{Lemma}
 
 \definecolor{lightred}{rgb}{1,0.7,0.7}
 \definecolor{lightblue}{rgb}{0.7,0.7,1.0}
