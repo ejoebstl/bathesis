@@ -70,7 +70,7 @@
 %% |  Information for PDF file   |
 %% -------------------------------
 \hypersetup{
- pdfauthor={Emanuel Jobstl},
+ pdfauthor={Emanuel J\"obstl},
  pdftitle={A Practical Approach to Analyzing Incremental Programs Using Execution Traces},
  pdfsubject={Not Set},
  pdfkeywords={Not Set}
@@ -80,19 +80,19 @@
 %% |  about the thesis  |
 %% ---------------------------------
 
-\newcommand{\myname}{Emanuel Jobstl}
+\newcommand{\myname}{Emanuel J\"obstl}
 \newcommand{\mytitle}{A Practical Approach to Analyzing Incremental Programs Using Execution Traces}
 \newcommand{\myinstitute}{Institute for Program Structures\\
 													and Data Organization (IPD)}
 
-\newcommand{\reviewerone}{?}
-\newcommand{\reviewertwo}{?}
-\newcommand{\advisor}{?}
-\newcommand{\advisortwo}{?}
+\newcommand{\reviewerone}{Prof. Dr. Walter F. Tichy}
+\newcommand{\reviewertwo}{Prof. Dr. Ralf H. Reussner}
+\newcommand{\advisor}{Prof. Dr. Walter F. Tichy}
+\newcommand{\advisortwo}{Umut A. Acar}
 
-\newcommand{\timestart}{XX. Monat 20XX}
-\newcommand{\timeend}{XX. Monat 20XX}
-\newcommand{\submissiontime}{DD. MM. 20XX}
+\newcommand{\timestart}{24. Juli 2014}
+\newcommand{\timeend}{23. November 2014}
+\newcommand{\submissiontime}{23. November. 2014}
 
 
 %% ---------------------------------
@@ -149,8 +149,6 @@ titlepage,
 declaration,
 introduction,
 content,
-evaluation,
-conclusion,
 appendix
 }
 
@@ -167,7 +165,31 @@ appendix
 \pagenumbering{roman}
 \include{titlepage}
 \include{declaration}
-\blankpage
+
+\chapter*{Acknowledgement}
+
+Umut A. Acar was a very helpful supervisor and mentioned the idea of experimenting with different properties inside node tags during a discussion, adding substential value to this writing. Thank you!
+
+Thomas Marshal provided a lot of explanation on the concepts, inner workings and implementation details of TBD. Thank you!
+
+Prof. Dr. Walter F. Tichy provided very valuable feedback regarding the style and readability of this writing. Thank you!
+
+Johannes Rudolph from the Scala community and Eugene Burmako from the Scala development team helped provided a lot of information that helped me to understand and apply Scala macros. Thank you!
+
+The Baden-W\"urttemberg Stiftung and the interACT program made it possible for me to write my bachelor's thesis at Carnegie Mellon University. Thank you!
+
+\begin{figure}
+\centering
+\includegraphics[scale=2]{logos/BW.jpg}
+\end{figure}
+
+
+\chapter*{Abstract}
+The principle of incremental programming has been investigated for many years. A recent approach is the concept of \textit{self-adjusting programs}. Self-adjusting programs are programs that automatically adjust their output and internal state if the input changes. In this writing, we inspect \textit{TBD}, a platform that provides an API to write self-adjusting programs. We show how we can use dependency graphs of TBD program runs to calculate \textit{trace distance}, a metric for changes between two executions, in practice. Furthermore, we define multiple types of trace distance that also allow us to analyze and optimize programs. Finally, we evaluate the usefulness of our implementation of trace distance using basic algorithms. 
+
+\vspace{10 mm}
+
+Das Prinzip der inkrementellen Programmierung ist bereits seit Jahrzehnten bekannt. Ein neuartiger Ansatz ist das Konzept der \textit{Self-Adjusting Programs}. Self-Adjusting Programs sind Programme, die automatisch ihre Ausgabe sowie ihren internen Status an Eingabe\"anderungen anpassen. In dieser Arbeit betrachten wir \textit{TBD}, eine Plattform, die eine Schnittstelle zur Programmierung von Self-Adjusting Programs bereitstellt. Wir zeigen zudem, wie wir Abh\"angigkeitsgraphen von TBD Programausf\"uhrungen benutzen k\"onnen, um \textit{Trace Distance}, eine Metrik f\"ur die verschiedenheit zweier Programmausf\"uhrungen, zu in der Praxis berechnen. Zudem werden mehrere Arten von Trace Distance definiert, die es uns erlauben das Programm zu analysieren und zu optimieren. Am Ende der Arbeit wird die N\"utzlichkeit sowie Korrektheit unserer Implementierung von Trace Distance anhand einiger einfacher Algorithmen evaluiert. 
 
 
 %% -------------------
@@ -183,7 +205,7 @@ appendix
 \mainmatter
 \pagenumbering{arabic}
 \include{introduction}
-\include{content}
+%\include{content}
 
 
 %% --------------------

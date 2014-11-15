@@ -693,7 +693,7 @@ If an input value is updated, the corresponding $read$ call is re-evaluated, and
 \section{DDGs for TBD}
 \label{sec:tbd_ddgs}
 
-DDGs are fundamental for calculating trace distance. However, TBD does not perform change propagation on a level of program functions, but rather by re-evaluating closures that are passed to $read$, $write$, $memo$ and $mod$. Therefore, we introduce a new, more specific DDG format for TBD. The new DDG format introduces nodes for $read$, $mod$, $memo$ and $write$ operations. 
+DDGs are fundamental for calculating trace distance. However, TBD does not perform change propagation on a level of program functions, but rather by re-evaluating closures that are passed to $read$, $write$, $memo$ and $mod$. TBD uses a DDG internally to handle change propagation, but this DDG does not hold enough properties to calculate trace distance. Therefore, we introduce a new, more specific DDG format for TBD. The new DDG format introduces nodes for $read$, $mod$, $memo$ and $write$ operations. 
 
 Each node in the DDG has to hold enough information to re-evaluate the corresponding call. Since we have to compare DDG nodes for calculating trace distance, all data has to be available in comparable form, including closures. We therefore introduce the following representations: 
 
@@ -986,7 +986,7 @@ Pure trace distance is useful for comparing two versions of a program and to inv
 
 An interesting aspect of a self-adjusting program is how well memoization was handled. For this purpose, we introduce \textit{Memo-Sensitive Trace Distance}. For two DDGs, $A$ and $B$, we denote memo-sensitive trace distance as $\delta_m(A, B)$.
 
-To implement memo-sensitive trace distance, we include all properties introduced in section \ref{sec:tbd_ddgs} except the node id into the tag. This is done because, as mentioned before, the properties of each node completely define the state of the corresponding call. If all properties of two nodes equal, the corresponding functions will execute equally. Those nodes are not counted by memo-sensitive trace distance, since their re-evaluation can be omitted using memoization. In other words, memo-sensitive trace distance indicates how well a program could perform, if all calls were memoized. 
+To implement memo-sensitive trace distance, we include all properties introduced in section \ref{sec:tbd_ddgs} except the node id into the tag. This is done because, as mentioned before, the properties of each node completely define the state of the corresponding call. If all properties of two nodes equal, the corresponding functions will execute equally. Those nodes are not counted by memo-sensitive trace distance, since their re-evaluation can be omitted using memoization. Memo trace distance can therefore be used to find nodes that can be memoized.  
 
 \subsection{Allocation-Sensitive Trace Distance}
 
@@ -1396,6 +1396,8 @@ To evaluate our trace distance algorithm and its implementation, we analyze the 
 
 As experiment setup, we generate random updates on all possible successive positions on a initial input set with size $50$\footnote{This input size was chosen due to hardware limitations of our testing machine.} for the mentioned algorithms. In other words, for each start index $i$ of the input set, we will perform random updates of each possible length $u$ on the input set. The results of this exhaustive tests are shown using surface plots, where the $i$ and $u$ axes correspond to the start index and the length of the update, respectively, and the value on the vertical axis corresponds to the trace distance. We only include updates of values, but no insertions or deletions into the input set. The reason is that tests cases would get a lot bigger and more complicated. While insertions and deletions are very interesting from the perspective of algorithm design, they are not of particular important for an evaluation of trace distance. Each test run is repeated five times, the results are averaged. 
 
+We do not evaluate the implementation of memo-sensitive trace distance here, since memo-sensitive trace distance does not correspond to a certain version of a program. Memo-sensitive trace distance is merely a metric between pure and allocation-sensitive trace distance, that can be used to find nodes that are easily memoizable. 
+
 \section{Map}
 
 The unmemoized and memoized versions of $map$ have been discussed throughly in section \ref{sec:tbd_basic_example} and section \ref{sec:tbd_basic_example}. For an unmemoized version of $map$, we expect a change propagation overhead that depends not only on the update size, but also on the starting position of the update, since $map$ will also be executed for all successive elements. Formally, that means that if the element with index $i$ was updated, change propagation overhead will be at least as high as for an update of size $n-i$, where $n$ denotes the input size. A plot using pure trace distance can be seen in plot \ref{plot:unmemoized_map_pure}. We can see that even for small updates, we have high overhead, depending on the position of the update. 
@@ -1743,32 +1745,50 @@ For our memoized implementation, we observe that updates in the beginning of the
 A plot of pure trace distance for the memoized version of quicksort can be seen in figure \ref{plot:memo_quicksort_pure}. The result is, again, similar to the result given by allocation-sensitive trace distance for the unmemoized version. 
 
 \begin{figure}
-\centering
-\begin{tikzpicture}
-\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_a$]
-\addplot3[surf]
-table{data/QuicksortAlloc.txt};
-\end{axis}
-\end{tikzpicture}
-\caption{Allocation sensitive trace distance for updates of a quicksort.}
-\label{plot:quicksort_alloc}
+  \centering
+  \begin{tikzpicture}
+  \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_a$]
+  \addplot3[surf]
+  table{data/QuicksortAlloc.txt};
+  \end{axis}
+  \end{tikzpicture}
+  \caption[margin=5]{Allocation sensitive trace distance for updates of a quicksort.}
+  \label{plot:quicksort_alloc}
 \end{figure}
 
 \begin{figure}
-\centering
-\begin{tikzpicture}
-\begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
-\addplot3[surf]
-table{data/MemoQuicksortPure.txt};
-\end{axis}
-\end{tikzpicture}
-\caption{Pure trace distance for updates of a memoized version of quicksort.}
-\label{plot:memo_quicksort_pure}
+  \centering
+  \begin{tikzpicture}
+  \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
+  \addplot3[surf]
+  table{data/MemoQuicksortPure.txt};
+  \end{axis}
+  \end{tikzpicture}
+  \caption[margin=5]{Pure trace distance for updates of a memoized version of quicksort.}
+  \label{plot:memo_quicksort_pure}
 \end{figure}
 
 \chapter{Conclusion}
 
+During this writing, we explained the basic concepts of self-adjusting computation, introduced the TBD platform, that enables programmers to create self-adjusting programs. We also explained how the API of TBD is structured and how programs on top of TBD have to be written, including key elements like modifiables and explicit memoization. 
 
+Then, we expanded the DDG concept to match TBD, and defined what properties nodes in a DDG must have so we can calculate trace distance between two DDGs. We also introduced so-called node tags that are used to compare nodes when calculating trace distance. Using node tags, we created three definitions of equality, that resulted in meaningful definitons of trace distance: 
+
+\begin{itemize}
+\item \textit{Pure Trace Distance}, that counts all nodes that were actually re-executed during change propagation and therefore provides a metric about how well a program performed during change propagation. 
+\item \textit{Memo-Sensitive Trace Distance}, that only counts nodes that had different parameters and therefore had to be re-executed during change propagation, providing a metric about how the program could have performed when correct memoization was used. 
+\item \textit{Allocation-Sensitive Trace Distance}, that only counts nodes that had different parameters and also ignores all references to modifiables when comparing traces, and therefore providing a metric about how well the program would perform if all memory is re-used in a way that prevents additional change propagation and memoization is done correctly. 
+\end{itemize} 
+
+We then discuss how we implemented this functionality and explain how we overcame challenges like checking closures for equality and collecting the necassary data. Also, we introduce our testing framework that includes test generators and a visualizer that is capable of comparing DDGs of different executions. 
+
+Finally, we evaluated pure trace distance and allocation-sensitive trace distance by comparing pure and allocation-sensitive trace distance of unmemoized programs and pure trace distance for memoized programs with keyed allocation. We showed that the test results were equal to the results we expected, and especially, that the results for allocation-sensitive trace distance for the unmemoized version of each program were equal to the results for pure trace distance for the memoized version with keyed allocation for each program. 
+
+We therefore conclude that using allocation-sensitive trace distance, it is possible to predict how a unmemoized program performs when it is memoized correctly and keyed allocaiton is added. 
+
+\section{Future Work}
+
+To calculate trace distance, it was necassary to collect a lot of information about the executed program and the DDG. We believe that it is possible implement automatic optimization. For instance, we could utilize the output of memo-sensitive trace distance to heuristically memoize nodes after a few runs of a program. Also, automated error checking based on DDGs might be possible. For example, it could be checked wether a memo call includes all variables that are bound from an outer scope to the memo call's closure. If this is not done, the memo call is potentially unsafe since the variable might change but the change is not considered when checking for memo matches. 
 
 %\chapter{Use Cases}
 %\label{ch:use_cases}
