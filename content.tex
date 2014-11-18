@@ -1693,7 +1693,7 @@ def filterInternal
 The implementation of quicksort can be seen in listing \ref{code:quicksort}. The $quicksort$ function allocates memory for the first output element and initializes the last element of the list. Then, $quicksortInternal$ is called. The $quicksortInternal$ function is responsible for recursively sorting a linked list and appending the supplied element $tail$ to the list. For each input list, the $quicksortInternal$ function reads the first element of the list. Then, the function splits the rest of the list in two parts, one containing all elements greater, and one containing all elements smaller than the first element. Finally, those lists are sorted using a recursive call of $quicksortInternal$ and then concatenated. The part to add to the end of a list is supplied as $tail$ to each recursive call.
 
 \begin{figure}
-\begin{frame}[lstlisting=single,basicstyle=\ttfamily,numbers=left,mathescape=true]
+\begin{lstlisting}[frame=single,basicstyle=\ttfamily,numbers=left,mathescape=true]
 def quickSort
   (comperator: (Element, Element) => Boolean)
   (implicit c: Context): Mod[SimpleList[Element]] = {
