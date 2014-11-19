@@ -133,7 +133,7 @@ Figure \ref{fig:map_change_ddg} shows the DDG of the simple map example after ch
 
 \section{Memoization}
 
-\textit{memoization}, or also called \textit{function caching} is the task of storing results of expensive computations. Basically, it is possible to remember the input parameters and the result for a given function. Then, the parameters of repetitive calls can be compared to the stored parameters. If the parameters match, the result can be re-used. Such a match is called \textit{memo match}.
+\textit{Memoization}, or also called \textit{function caching} is the task of storing results of expensive computations. Basically, it is possible to remember the input parameters and the result for a given function. Then, the parameters of repetitive calls can be compared to the stored parameters. If the parameters match, the result can be re-used. Such a match is called \textit{memo match}.
 
 In combination with DDGs, this means that we can re-use whole subtrees of the DDG during change propagation. Figure \ref{fig:map_change_ddg_memo} illustrates the change propagation process using a memoized DDG. Again, the change propagation algorithm re-evaluates functions dependent on the changed input. When the algorithm reaches the call to $f(2)$ however, the parameters of the call match the previous call. The algorithm therefore skips re-executing the call to $f(2)$ and re-uses the subtree. With this technique, the update of a constant number of elements finishes in constant time, for lists of any length. 
 The memo match is highlighted in green. 
@@ -202,7 +202,7 @@ It should be noted that for memoization to work, all functions are required to b
 
 When a memory in a self-adjusting program is allocated, and this allocation call is re-executed during change propagation, a new memory location will be allocated. This behavior is desired in general, since we do not want to overwrite memory during change propagation. However, the memory location might be read again inside the program or even used for memoization. In this case, changing the memory location will require updating all references through the program to the new location during change propagation. This behavior can cost a lot of performance. 
 
-The solution for this problem is keyed allocation. \textit{Keyed allocation} is the task of allocating memory depending on a key, passed to the allocation call. If a key matches the key used in a previous allocation, the old the old memory location is re-used. The old value will be overwritten. Therefore, the change propagation algorithm can use the DDG to identify all parts which have to be updated, but it is not needed to update all references. 
+The solution for this problem is keyed allocation. \textit{Keyed allocation} is the task of allocating memory depending on a key, passed to the allocation call. If a key matches the key used in a previous allocation, the old memory location is re-used. The old value will be overwritten. Therefore, the change propagation algorithm can use the DDG to identify all parts which have to be updated, but it is not needed to update all references. 
 
 To illustrate the need for this concept, consider a list reverse operation that is implemented recursively. This operation takes an input list $A = (a_1, ..., a_n)$ and creates the reversed output list $A_r = (a_n, ..., a_1)$. Let $r$ be our recursive reverse operation. Whenever $r$ is called, the pointer to the next element is read. Then, a new element is allocated, with the value of the current element as value and the head of the accumulator list as next element. The new element now is the new head of the accumulator list. Then, $r$ is called with the next element and the new head of the accumulator list. If the end of the list is reached, $r$ is not called again. The first call of $r$ has the head of the input list and a null reference as parameter. 
 
@@ -600,9 +600,9 @@ def function(parameter: Mod[Int])(implicit context: Context)
 \label{code:second_param}
 \end{figure}
 
-\subsection{Add: A basic example}
+\subsection{Add: A basic Example}
 \label{sec:tbd_basic_example}
-As a basic example, we discuss a function that takes two numbers, adds them and returns the result. To implement this functionality on top of TBD, we have to create a function that takes to mods as parameters. First, the function has to memoize against the input, using a $memo$ call. Then, the function has to allocate a mod for the result by issuing a $mod$ call. In the closure passed to the $mod$ call, the input variables have to be read. This is done by issuing two $read$ statements that are nested. In the closure passed to the innermost $read$ call, both input values are available to the program. Those values have to be added and written, using a $write$ call. 
+As a basic example, we discuss a function that takes two numbers, adds them and returns the result. To implement this functionality on top of TBD, we have to create a function that takes two mods as parameters. First, the function has to memoize against the input, using a $memo$ call. Then, the function has to allocate a mod for the result by issuing a $mod$ call. In the closure passed to the $mod$ call, the input variables have to be read. This is done by issuing two $read$ statements that are nested. In the closure passed to the innermost $read$ call, both input values are available to the program. Those values have to be added and written, using a $write$ call. 
 
 \begin{figure}
 \begin{lstlisting}[frame=single,basicstyle=\ttfamily,numbers=left]
@@ -640,7 +640,7 @@ When executing this program, each function executes the corresponding closure be
 
 If an input value of this function changes, TBD will take care to re-evaluate the corresponding $read$ call. The $read$ call then invokes its respective closure again and all function calls in the closure will be executed. Finally, the write will be re-executed and the result will be updated. If the $add$ function is called by another function during change propagation, the $memo$ call checks for memo matches and halts change propagation if the function is called with the same parameters as before. 
 
-\subsection{Map: A more complex example}
+\subsection{Map: A more complex Example}
 \label{sec:tbd_memo_map}
 
 To wrap up this section, we revisit the map example introduced in section \ref{sec:simple_example} and theoretically discussed in section \ref{sec:ddg}. Since the map operator operates on lists, we define a list element class, $SimpleList$, that is shown in \ref{fig:simple_list_uml}. The $SimpleList$ class represents a single list element. Each instance has a member that points to the next element of the list, and a member that holds the value. Like the member $next$, the head of a list is represented by an instance of $Mod[SimpleListElement[T]]$. The last element in the list is represented by a modifiable that holds a null reference.  
@@ -1174,7 +1174,7 @@ child {
 \fill[lightgreen,opacity=1] \convexpath{21, 34}{8pt};
 \end{pgfonlayer}
 \end{tikzpicture}
-\caption{DDG of the unmemoized $map$ function after the second value was updated to $6$.}
+\caption{DDG of the unmemoized $map$ function after the second value was updated to $6$}
 \label{fig:unmemoized_map_tbd_ddg_changepropagation}
 \end{figure}
 
@@ -1362,7 +1362,7 @@ Table \ref{tbl:introducing_example} shows an example of such an exported table f
 9  & 42 & 38 &    &    &    &    &    &    &    &    \\ \hline
 10 & 42 &    &    &    &    &    &    &    &    &    \\ \hline
 \end{tabular}
-\caption{Pure trace distance induced by different successive updates to the input of unmemoized map, by starting position and update length.}
+\caption{Pure trace distance induced by different successive updates to the input of unmemoized map, by starting position and update length}
 \label{tbl:introducing_example}
 \end{table}
 
@@ -1386,7 +1386,7 @@ The analyzer framework can be controlled using a command line interface. The int
 -p COUNT & When $random$ is selected as test generator, sets the maximal number of updates per update round. \\ \hline
 -d NAME & When $chart2d$ is selected as output, sets the type of trace distance to use, either $pure$, $memo$ or $alloc$. \\ \hline
 \end{tabular}
-\caption{Command line parameters for the analyzer framework.}
+\caption{Command line parameters for the analyzer framework}
 \label{tbl:commands}
 \end{table}
 
@@ -1426,7 +1426,7 @@ table{data/MapPure.txt};
 table{data/MemoMapPure.txt};
 \end{axis}
 \end{tikzpicture}
-\caption{Pure trace distance for updates of a memoized version of map.}
+\caption{Pure trace distance for updates of a memoized version of map}
 \label{plot:memoized_map_pure}
 \end{figure}
 
@@ -1440,7 +1440,7 @@ table{data/MemoMapPure.txt};
 table{data/MapAlloc.txt};
 \end{axis}
 \end{tikzpicture}
-\caption{Allocation sensitive trace distance for updates of a unmemoized version of map.}
+\caption{Allocation sensitive trace distance for updates of a unmemoized version of map}
 \label{plot:unmemoized_map_alloc}
 \end{figure}
 
@@ -1486,7 +1486,7 @@ private def linearReduceInternal[OutputElement]
   }
 }
 \end{lstlisting}
-\caption{A linear reduce function implemented on top of TBD.}
+\caption{A linear reduce function implemented on top of TBD}
 \label{code:linear_reduce}
 \end{figure}
 
@@ -1501,7 +1501,7 @@ As discussed in chapter \ref{sec:more_complex_example}, we expect a change propa
 table{data/LinearReducePure.txt};
 \end{axis}
 \end{tikzpicture}
-\caption{Pure trace distance for updates of a linar form of reduce.}
+\caption{Pure trace distance for updates of a linar form of reduce}
 \label{plot:reduce_pure}
 \end{figure}
 
@@ -1514,7 +1514,7 @@ table{data/LinearReducePure.txt};
 table{data/LinearReduceAlloc.txt};
 \end{axis}
 \end{tikzpicture}
-\caption{Allocation sensitive trace distance for updates of a linar form of reduce.}
+\caption{Allocation sensitive trace distance for updates of a linar form of reduce}
 \label{plot:reduce_alloc}
 \end{figure}
 
@@ -1527,7 +1527,7 @@ table{data/LinearReduceAlloc.txt};
 table{data/MemoLinearReducePure.txt};
 \end{axis}
 \end{tikzpicture}
-\caption{Pure trace distance for updates of a linar form of reduce with memoization and keyed allocation.}
+\caption{Pure trace distance for updates of a linar form of reduce with memoization and keyed allocation}
 \label{plot:memo_reduce_pure}
 \end{figure}
 
@@ -1601,7 +1601,7 @@ For this unmemoized version, we expect change propagation overhead of $O(n)$ in 
 table{data/TreeReducePure.txt};
 \end{axis}
 \end{tikzpicture}
-\caption{Pure trace distance of a tree-like reduce operation.}
+\caption{Pure trace distance of a tree-like reduce operation}
 \label{plot:tree_reduce_pure}
 \end{figure}
 
@@ -1618,7 +1618,7 @@ Figure \ref{plot:tree_reduce_alloc} shows the allocation sensitive trace distanc
 table{data/TreeReduceAlloc.txt};
 \end{axis}
 \end{tikzpicture}
-\caption{Allocation sensitive distance of a tree-like reduce operation.}
+\caption{Allocation sensitive distance of a tree-like reduce operation}
 \label{plot:tree_reduce_alloc}
 \end{figure}
 
@@ -1633,7 +1633,7 @@ table{data/TreeReduceAlloc.txt};
 table{data/MemoTreeReducePure.txt};
 \end{axis}
 \end{tikzpicture}
-\caption{Pure distance of a memoized tree-like reduce operation.}
+\caption{Pure distance of a memoized tree-like reduce operation}
 \label{plot:memo_tree_reduce_pure}
 \end{figure}
 
@@ -1686,7 +1686,7 @@ def filterInternal
 }
 
 \end{lstlisting}
-\caption{A $split$ function that splits an input list into two lists using a predicate.}
+\caption{A $split$ function that splits an input list into two lists using a predicate}
 \label{code:split_filter}
 \end{figure}
 
@@ -1728,7 +1728,7 @@ def quickSortInternal
 }
 
 \end{lstlisting}
-\caption{A quicksort implementation on top of TBD.}
+\caption{A quicksort implementation on top of TBD}
 \label{code:quicksort}
 \end{figure}
 
@@ -1743,7 +1743,7 @@ For quicksort we expect a time complexity of $O(n * log(n))$, where $n$ is the l
 table{data/QuicksortPure.txt};
 \end{axis}
 \end{tikzpicture}
-\caption{Pure trace distance for updates of a quicksort.}
+\caption{Pure trace distance for updates of a quicksort}
 \label{plot:quicksort_pure}
 \end{figure}
 
@@ -1764,7 +1764,7 @@ A plot of pure trace distance for the memoized version of quicksort can be seen 
   table{data/QuicksortAlloc.txt};
   \end{axis}
   \end{tikzpicture}
-  \caption[margin=5]{Allocation sensitive trace distance for updates of a quicksort.}
+  \caption[margin=5]{Allocation sensitive trace distance for updates of a quicksort}
   \label{plot:quicksort_alloc}
 \end{figure}
 
@@ -1777,7 +1777,7 @@ A plot of pure trace distance for the memoized version of quicksort can be seen 
   table{data/MemoQuicksortPure.txt};
   \end{axis}
   \end{tikzpicture}
-  \caption[margin=5]{Pure trace distance for updates of a memoized version of quicksort.}
+  \caption[margin=5]{Pure trace distance for updates of a memoized version of quicksort}
   \label{plot:memo_quicksort_pure}
 \end{figure}
 
@@ -1790,7 +1790,7 @@ Then, we expanded the DDG concept to match TBD, and defined properties a node in
 \begin{itemize}
 \item \textit{Pure Trace Distance}, that counts all nodes that were actually re-executed during change propagation and therefore provides a metric about how well a program performed during change propagation. 
 \item \textit{Memo-Sensitive Trace Distance}, that only counts nodes that had different parameters and therefore had to be re-executed during change propagation, providing hints about how to accomplish memoization. 
-\item \textit{Allocation-Sensitive Trace Distance}, that only counts nodes that had different parameters and also ignores all references to modifiables when comparing traces, and therefore providing a metric about how well the program would perform if all memory is re-used in a way that prevents additional change propagation and memoization is done correctly. 
+\item \textit{Allocation-Sensitive Trace Distance}, that only counts nodes that had different parameters and also ignores all references to modifiables when comparing traces. Allocatin-sensitive trace distance therefore provides a metric about how well the memoized program would perform if all memory is re-used in a way that prevents additional change propagation. 
 \end{itemize} 
 
 We then discussed how we implemented this functionality and explained how we overcame challenges like checking closures for equality and collecting the necessary data for calculating trace distance. Also, we introduced our testing framework that includes test generators and a visualizer that is capable of comparing DDGs of different executions. 

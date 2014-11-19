@@ -44,12 +44,10 @@
 						bookmarksopen=true,
 						bookmarksnumbered=true,
 						hyperindex=true,
+            hidelinks,
 						plainpages=false,
 						pdfpagelabels=true,
-						pdfborder={0 0 0.5},
-						colorlinks=false,						
-						linkbordercolor={0 0.61 0.50},   
-						citebordercolor={0 0.61 0.50}]{hyperref}  %{0.57 0.74 0.57}
+						colorlinks=false]{hyperref}  %{0.57 0.74 0.57}
 						
 \usepackage[fixlanguage]{babelbib}	% sets german style for literature entries
 \selectbiblanguage{ngerman}			% for \bibliographystyle{babalpha}
