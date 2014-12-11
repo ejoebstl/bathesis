@@ -1406,7 +1406,6 @@ The unmemoized and memoized versions of $map$ have been discussed thoroughly in 
 \begin{figure}
 \centering
 \begin{tikzpicture}
-\selectcolormodel{gray}
 \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
 \addplot3[surf]
 table{data/MapPure.txt};
@@ -1420,7 +1419,6 @@ table{data/MapPure.txt};
 \begin{figure}
 \centering
 \begin{tikzpicture}
-\selectcolormodel{gray}
 \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
 \addplot3[surf]
 table{data/MemoMapPure.txt};
@@ -1434,7 +1432,6 @@ table{data/MemoMapPure.txt};
 \begin{figure}
 \centering
 \begin{tikzpicture}
-\selectcolormodel{gray}
 \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_a$]
 \addplot3[surf]
 table{data/MapAlloc.txt};
@@ -1495,7 +1492,6 @@ As discussed in chapter \ref{sec:more_complex_example}, we expect a change propa
 \begin{figure}
 \centering
 \begin{tikzpicture}
-\selectcolormodel{gray}
 \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
 \addplot3[surf]
 table{data/LinearReducePure.txt};
@@ -1508,7 +1504,6 @@ table{data/LinearReducePure.txt};
 \begin{figure}
 \centering
 \begin{tikzpicture}
-\selectcolormodel{gray}
 \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_a$]
 \addplot3[surf]
 table{data/LinearReduceAlloc.txt};
@@ -1521,7 +1516,6 @@ table{data/LinearReduceAlloc.txt};
 \begin{figure}
 \centering
 \begin{tikzpicture}
-\selectcolormodel{gray}
 \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
 \addplot3[surf]
 table{data/MemoLinearReducePure.txt};
@@ -1595,7 +1589,6 @@ For this unmemoized version, we expect change propagation overhead of $O(n)$ in 
 \begin{figure}
 \centering
 \begin{tikzpicture}
-\selectcolormodel{gray}
 \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
 \addplot3[surf]
 table{data/TreeReducePure.txt};
@@ -1612,7 +1605,6 @@ Figure \ref{plot:tree_reduce_alloc} shows the allocation sensitive trace distanc
 \begin{figure}
 \centering
 \begin{tikzpicture}
-\selectcolormodel{gray}
 \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_a$]
 \addplot3[surf]
 table{data/TreeReduceAlloc.txt};
@@ -1627,7 +1619,6 @@ table{data/TreeReduceAlloc.txt};
 \begin{figure}
 \centering
 \begin{tikzpicture}
-\selectcolormodel{gray}
 \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
 \addplot3[surf]
 table{data/MemoTreeReducePure.txt};
@@ -1737,7 +1728,6 @@ For quicksort we expect a time complexity of $O(n * log(n))$, where $n$ is the l
 \begin{figure}
 \centering
 \begin{tikzpicture}
-\selectcolormodel{gray}
 \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
 \addplot3[surf]
 table{data/QuicksortPure.txt};
@@ -1758,7 +1748,6 @@ A plot of pure trace distance for the memoized version of quicksort can be seen 
 \begin{figure}
   \centering
   \begin{tikzpicture}
-  \selectcolormodel{gray}
   \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_a$]
   \addplot3[surf]
   table{data/QuicksortAlloc.txt};
@@ -1771,7 +1760,6 @@ A plot of pure trace distance for the memoized version of quicksort can be seen 
 \begin{figure}
   \centering
   \begin{tikzpicture}
-  \selectcolormodel{gray}
   \begin{axis}[xlabel=$i$,ylabel=$u$,zlabel=$\delta_p$]
   \addplot3[surf]
   table{data/MemoQuicksortPure.txt};
